@@ -8,3 +8,8 @@ python-dotenv==1.0.1
 openai==1.66.3
 tenacity==8.5.0
 beautifulsoup4==4.13.3
+ib-insync==0.9.86
+schedule
+notebook
+yfinance
+matplotlib
