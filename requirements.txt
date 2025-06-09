@@ -13,3 +13,8 @@ schedule
 notebook
 yfinance
 matplotlib
+tensorflow==2.17.0
+mplfinance
+scikit-learn
+seaborn
+pytest-shutil

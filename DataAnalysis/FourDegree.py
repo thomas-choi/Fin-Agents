@@ -1,5 +1,9 @@
 import pandas as pd
 from datetime import time
+import matplotlib.pyplot as plt
+from matplotlib.table import Table
+import os
+from pathlib import Path
 
 # Load CSV file into DataFrame and add time column
 def load_and_split_csv(file_path):
@@ -76,8 +80,18 @@ def display_virtual_table(virtual_df, table_name):
     print(f"\nVirtual Table: {table_name}")
     print(sorted_df[['Price', 'Times']].to_string())
 
-# Save all virtual tables aligned by price to a CSV file
-def display_all_virtual_tables(virtual_tables, dates):
+# Save all virtual tables aligned by price to a CSV file and generate monthly images and CSVs
+def display_all_virtual_tables(virtual_tables, dates, output_file):
+    # Set Matplotlib style to default for light background
+    plt.style.use('default')
+    
+    # Extract ticker from output file name
+    ticker = Path(output_file).stem.split('_')[0]
+    
+    # Create directory for ticker if it doesn't exist
+    ticker_dir = Path(ticker)
+    ticker_dir.mkdir(exist_ok=True)
+    
     # Sort dates from oldest to latest
     sorted_date_pairs = sorted(zip(dates, virtual_tables), key=lambda x: x[0])
     sorted_dates, sorted_tables = zip(*sorted_date_pairs)
@@ -86,20 +100,26 @@ def display_all_virtual_tables(virtual_tables, dates):
     all_prices = set()
     for table in sorted_tables:
         all_prices.update(table['Price'])
-    all_prices = sorted(all_prices, reverse=True)  # Sort prices high to low
+    all_prices = sorted(all_prices, reverse=False)  # Sort prices low to high for Y-axis
     
     # Create a combined DataFrame
     combined_df = pd.DataFrame({'Price': all_prices})
     
-    # Add Times columns for each date
+    # Collect all date columns as a list of DataFrames
+    date_columns = []
     max_times_lengths = {}
     for date, table in zip(sorted_dates, sorted_tables):
         # Convert table to a dictionary for quick lookup
         price_to_times = dict(zip(table['Price'], table['Times']))
-        # Add Times for this date, defaulting to empty string if price not present
-        combined_df[str(date)] = [price_to_times.get(price, '') for price in all_prices]
+        # Create a Series for this date
+        times_series = pd.Series([price_to_times.get(price, '') for price in all_prices], name=str(date))
+        date_columns.append(times_series)
         # Calculate max length for padding
-        max_times_lengths[str(date)] = max(len(str(times)) for times in combined_df[str(date)])
+        max_times_lengths[str(date)] = max(len(str(times)) for times in times_series)
+    
+    # Concatenate all date columns at once
+    date_df = pd.concat(date_columns, axis=1)
+    combined_df = pd.concat([combined_df, date_df], axis=1)
     
     # Format each Times column to be left-aligned with spaces padded to the right
     for date in sorted_dates:
@@ -107,16 +127,87 @@ def display_all_virtual_tables(virtual_tables, dates):
             lambda x: f"{str(x):<{max_times_lengths[str(date)]}}"
         )
     
-    # Save to CSV file
-    output_file = 'combined_virtual_tables.csv'
+    # Save to main CSV file
     combined_df.to_csv(output_file, index=False)
     print(f"\nCombined virtual tables saved to {output_file}")
+    
+    # Group dates by month
+    monthly_groups = {}
+    for date in sorted_dates:
+        month_key = date.strftime('%Y-%m')
+        if month_key not in monthly_groups:
+            monthly_groups[month_key] = []
+        monthly_groups[month_key].append(str(date))
+    
+    # Generate an image and CSV for each month
+    for month_key, date_columns in monthly_groups.items():
+        # Sort date columns chronologically for X-axis (first to last day of the month)
+        date_columns = sorted(date_columns)
+        # Create a DataFrame for this month with Price as Y-axis
+        month_df = combined_df[['Price'] + date_columns]
+        
+        # Filter rows where at least one date column has non-empty content (excluding whitespace)
+        month_df = month_df[month_df[date_columns].apply(lambda x: x.str.strip()).ne('').any(axis=1)]
+        
+        # Skip if month_df is empty after filtering
+        if month_df.empty:
+            print(f"No data for {month_key}, skipping CSV and image generation.")
+            continue
+        
+        # Save monthly CSV
+        output_csv = ticker_dir / f"{ticker}_{month_key}.csv"
+        month_df.to_csv(output_csv, index=False)
+        print(f"Monthly virtual table CSV saved to {output_csv}")
+        
+        # Generate image with Price on Y-axis (rows) and dates on X-axis (columns)
+        output_image = ticker_dir / f"{ticker}_{month_key}.png"
+        max_content_length = max(max_times_lengths.get(date, 0) for date in date_columns)
+        col_width = max(1, max_content_length * 0.1)  # Increased minimum width to 0.5, adjusted scaling to 0.02
+        col_width = max(0.5, max_content_length * 0.08)  # Increased minimum width to 0.5, adjusted scaling to 0.02
+
+        # col_width = 1 / len(date_columns)
+        fig_width=max(len(date_columns) * 1.5, 10)
+        fig_width = max(3, len(date_columns) * col_width + 2.0)  # Minimum width of 3, added 2.0 units padding
+        print(f"max_content_length={max_content_length}, col_width={col_width}, fig_width={fig_width}")
+        fig, ax = plt.subplots(figsize=(fig_width, len(month_df) * 0.3 + 2))
+        
+        # Create table with Price as row headers (Y-axis) and dates as column headers (X-axis)
+        table = Table(ax, bbox=[0, 0, 1, 1])
+        
+        # Add column headers (dates for X-axis) with left alignment
+        table.add_cell(0, 0, col_width * 0.2, 1, text='Price', loc='center')  # Price header
+        for col_idx, col_name in enumerate(date_columns, start=1):
+            table.add_cell(0, col_idx, col_width, 1, text=col_name, loc='center')
+        
+        # Add data rows (Price for Y-axis) with left alignment
+        for row_idx, row in month_df.iterrows():
+            table.add_cell(row_idx + 1, 0, col_width * 0.2, 1, text=str(row['Price']), loc='center')  # Price value
+            for col_idx, value in enumerate(row[1:], start=1):
+                table.add_cell(row_idx + 1, col_idx, col_width, 1, text=value, loc='left')
+        
+        # Styling
+        table.auto_set_font_size(False)
+        table.set_fontsize(8)
+        table.scale(1, 1.5)
+        
+        # Set table properties for visibility
+        for (row, col), cell in table.get_celld().items():
+            cell.set_text_props(color='black')
+            cell.set_edgecolor('black')
+            cell.set_facecolor('white')
+        
+        ax.add_table(table)
+        plt.title(f"{ticker} Virtual Table - {month_key}", fontsize=10, pad=15)
+        plt.axis('off')  # Hide axes
+        plt.savefig(output_image, bbox_inches='tight', dpi=150, facecolor='white')
+        plt.close()
+        print(f"Monthly virtual table image saved to {output_image}")
 
 # Example usage
 if __name__ == "__main__":
     # Replace 'your_file.csv' with your CSV file path
-    file_path = '../Data/HSI-futures.csv'
     file_path = "../Data/HSI-futures-30min.csv"
+    output_file = 'HSI_virtual_tables.csv'
     
     try:
         daily_dfs = load_and_split_csv(file_path)
@@ -136,9 +227,9 @@ if __name__ == "__main__":
             virtual_tables.append(virtual_table)
             dates.append(date)
         
-        # Save all virtual tables to CSV
+        # Save all virtual tables to CSV and generate monthly images and CSVs
         if virtual_tables:
-            display_all_virtual_tables(virtual_tables, dates)
+            display_all_virtual_tables(virtual_tables, dates, output_file)
             
     except FileNotFoundError:
         print(f"Error: File '{file_path}' not found.")
