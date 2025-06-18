@@ -1,0 +1,8 @@
+beautifulsoup4==4.13.3
+boto3==1.37.37
+curl_cffi==0.10.0
+openai==1.72.0
+pandas==2.2.3
+requests==2.32.3
+selenium==4.33.0
+supabase==2.15.1
