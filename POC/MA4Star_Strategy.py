@@ -31,9 +31,10 @@ def detect_rising_star(data, idx, lookback):
         return False
     
     # Check for downtrend: previous 5 candlesticks' Labels must be "DOWN"
-    prev_labels = data[LABEL_STAR].iloc[idx-nback:idx-2]
-    if not all(label == "DOWN" for label in prev_labels if label is not None):
-        return False
+    if lookback > 0:
+        prev_labels = data[LABEL_STAR].iloc[idx-nback:idx-2]
+        if not all(label == "DOWN" for label in prev_labels if label is not None):
+            return False
     
     # Check three candlestick pattern
     candle_1 = data.iloc[idx-2]
@@ -62,9 +63,10 @@ def detect_evening_star(data, idx, lookback):
         return False
     
     # Check for uptrend: previous 5 candlesticks' Labels must be "UP"
-    prev_labels = data[LABEL_STAR].iloc[idx-nback:idx-2]
-    if not all(label == "UP" for label in prev_labels if label is not None):
-        return False
+    if lookback > 0:
+        prev_labels = data[LABEL_STAR].iloc[idx-nback:idx-2]
+        if not all(label == "UP" for label in prev_labels if label is not None):
+            return False
     
     # Check three candlestick pattern
     candle_1 = data.iloc[idx-2]
