@@ -462,8 +462,8 @@ def cal_accuracy(ticker, y_test, y_pred_classes, model_name):
 # Step 8: Main function
 def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_):
     # Generate and split data
-    train_p = f"{ticker}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}"
-    test_p = f"{ticker}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}"
+    train_p = f"{ticker}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}_{lookback_}"
+    test_p = f"{ticker}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}_{lookback_}"
     train_charts, train_labels, test_charts, test_labels, fulldata = generate_candlestick_with_emas(ticker, predict_days, window_days, alpha,
                                                                                                    train_p, test_p, lookback_)
 
@@ -472,7 +472,7 @@ def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df
         return result_df
         
     # dump the fulldata with all calculated EMAs and labels
-    fulldata.to_csv(os.path.join("data", f"fulldata_{ticker}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}.csv"), index=True)
+    fulldata.to_csv(os.path.join("data", f"fulldata_{ticker}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}_{lookback_}.csv"), index=True)
     print(f"Fulldata saved for {ticker} with {len(fulldata)} rows.")
 
     em_y = fulldata['EMStrend'].dropna()
@@ -494,7 +494,7 @@ def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df
     # Train and evaluate each model
     for model, model_name in models:
         # if model file exist, skip the process
-        model_file = os.path.join("models", f"{ticker}_{model_name}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}.pkl")
+        model_file = os.path.join("models", f"{ticker}_{model_name}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}_{lookback_}.pkl")
         if os.path.exists(model_file):
             print(f"{model_file} already exists, skipping training.")
             continue

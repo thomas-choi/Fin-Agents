@@ -17,12 +17,12 @@ if [ ! -f "$PYTHON_SCRIPT" ]; then
 fi
 
 # Define argument lists (numeric values for batch_size and learning_rate)
-TICKERS=("^HSI")
+TICKERS=("^HSI" "1109.HK")
 WIN_DAYS_L=("30" "55" )          
 ALPHA_L=("0.4" "0.5" "0.6")                 
 EPOCHS_L=("30") 
-PREDICT_DAYS_L=("2" "5" "8")    
-LOOKBK_L=("2" "5")
+PREDICT_DAYS_L=("2" "5")    
+LOOKBK_L=("0" "2" "4")
 BATCH_SIZE_L=("32")           
 
 # Nested loops to iterate through all combinations
