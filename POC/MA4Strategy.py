@@ -10,6 +10,11 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import seaborn as sns
 import matplotlib.pyplot as plt
 import shutil
+import pickle
+import gc
+import argparse
+
+result_file = "4MAs_result.csv"
 
 # Step 1: Calculate EMAs and generate charts with price-based labeling
 def calculate_emas(data, periods=[5, 10, 20, 30]):
@@ -17,8 +22,14 @@ def calculate_emas(data, periods=[5, 10, 20, 30]):
         data[f'EMA_{period}'] = data['Close'].ewm(span=period, adjust=False).mean()
     return data
 
-def generate_candlestick_with_emas(ticker, gap=5, days=20, alpha=0.5, train_dir="train_charts", test_dir="test_charts"):
+#
+#   generate_candlestick_with_emas(ticker, predict_days, window_days, alpha, train_p, test_p)
+# 
+def generate_candlestick_with_emas(ticker, gap=5, days=20, alpha=0.5, train_name="train_charts", test_name="test_charts"):
+    print(f"generate_candlestick_with_emas {ticker} with predict_days/gap={gap}, days={days}, alpha={alpha}, train_name={train_name}, test_name={test_name}")
     # Create directories for training and testing images
+    train_dir = os.path.join("train", train_name)
+    test_dir = os.path.join("test", test_name)
     os.makedirs(train_dir, exist_ok=True)
     os.makedirs(test_dir, exist_ok=True)
     
@@ -148,8 +159,12 @@ def generate_candlestick_with_emas(ticker, gap=5, days=20, alpha=0.5, train_dir=
     # Save metadata to CSV
     train_df = pd.DataFrame({"chart_path": train_chart_paths, "label": train_labels})
     test_df = pd.DataFrame({"chart_path": test_chart_paths, "label": test_labels})
-    train_df.to_csv(f"{train_dir}_metadata.csv", index=False)
-    test_df.to_csv(f"{test_dir}_metadata.csv", index=False)
+    train_fullp = os.path.join("train_metadata", f"{train_name}_metadata.csv")
+    print(train_fullp)
+    train_df.to_csv(train_fullp, index=False)
+    test_fullp = os.path.join("test_metadata", f"{test_name}_metadata.csv")
+    print(test_fullp)
+    test_df.to_csv(test_fullp, index=False)
     
     return train_charts, train_labels, test_charts, test_labels, data
 
@@ -323,59 +338,102 @@ def EMSTrend(ticker, days=20):
     return time_slots, labels
 
 # Step 8: Main function
-def main(ticker="AAPL", days=20, alpha=0.5):
-    # Generate and split data for chart-based training
-    train_charts, train_labels, test_charts, test_labels, EMSdata = generate_candlestick_with_emas(ticker, days, alpha)
-    
+def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df):
+
+    # Generate and split data
+    train_p = f"{ticker}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}"
+    test_p = f"{ticker}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}"
+    train_charts, train_labels, test_charts, test_labels, fulldata = 
+    generate_candlestick_with_emas(ticker, predict_days, window_days, alpha, train_p, test_p)
+
     if not train_charts or not test_charts:
         print("No charts generated, exiting.")
-        return
-    
+        return result_df
+        
+    em_y = fulldata['EMStrend'].dropna()
+    print(len(em_y))
+    lb_y = fulldata['Labels'].dropna()
+    print(len(lb_y))
+
     # Load training and testing data
-    X_train, y_train = load_data(f"{ticker}_train_metadata.csv")
-    X_test, y_test = load_data(f"{ticker}_test_metadata.csv")
+    X_train, y_train = load_data(os.path.join("train_metadata", f"{train_p}_metadata.csv"))
+    X_test, y_test = load_data(os.path.join("test_metadata", f"{test_p}_metadata.csv"))
+    
+    # print("Trainning data:  ", X_train, ",", y_train)
+    # print("Testing data:  ", X_test, ",", y_test)
     
     if X_train.size == 0 or X_test.size == 0:
         print("No valid images processed, exiting.")
-        return
-    
+        return result_df
+        
     # Define models to train
     models = [build_cnn_model(), build_cnn_lstm_model(), build_dense_model()]
     
     # Train and evaluate each model
     for model, model_name in models:
+        # if model file exist, skip the process
+        model_file = os.path.join("models", f"{ticker}_{model_name}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}.pkl")
+        if os.path.exists(model_file):
+            print(f"{model_file} model exist")
+            continue
         print(f"\nTraining {model_name}...")
-        history = model.fit(X_train, y_train, epochs=15, validation_split=0.2, batch_size=32, verbose=1)
+        history = model.fit(X_train, y_train, epochs=epochs, validation_split=0.2, batch_size=batch_size, verbose=1)
         plot_accuracy(ticker, history, model_name)
-        evaluate_model(ticker, model, X_test, y_test, model_name)
-    
-    # Predict on a test chart (example)
-    new_chart_path = test_charts[0] if test_charts else None
-    if new_chart_path and os.path.exists(new_chart_path):
-        new_chart = preprocess_image(new_chart_path)
-        if new_chart is not None:
-            for model, model_name in models:
-                prediction = model.predict(np.array([new_chart]))
-                trend = ["UP", "DOWN", "SIDEWAY"][np.argmax(prediction)]
-                print(f"{model_name} predicted trend for {new_chart_path}: {trend} (Probabilities: {prediction[0]})")
-    
-    # Generate EMA-based trend labels using the new function
-    time_slots, ema_labels = EMSTrend(ticker, days)
-    if time_slots:
-        print(f"\nEMA Trend Labels for {ticker}:")
-        for slot, label in zip(time_slots, ema_labels):
-            print(f"Date: {slot}, Trend: {label}")
-    
-    # Clean up chart directories (optional, comment out to keep images)
-    # shutil.rmtree("train_charts")
-    # shutil.rmtree("test_charts")
-    # if os.path.exists(f"{ticker}_train_metadata.csv"):
-    #     os.remove(f"{ticker}_train_metadata.csv")
-    # if os.path.exists(f"{ticker}_test_metadata.csv"):
-    #     os.remove(f"{ticker}_test_metadata.csv")
+        acc, prec, recall, f1 = evaluate_model(ticker, model, X_test, y_test, model_name)
+        # Append the row
+        new_row =[ticker,model_name,window_days, alpha, epochs, predict_days, batch_size,acc, prec, recall, f1]
+        result_df.loc[len(result_df)] = new_row
+        result_df.to_csv(result_file, index=False)
+        with open(model_file, 'wb') as file:
+            pickle.dump(model, file)  
+        # Free memory
+        del model
+        tf.keras.backend.clear_session()
+        gc.collect()
+
+    trend_mapping = {"UP": 1, "DOWN": 2, "SIDEWAY": 3}
+    em_y = fulldata['EMStrend'].dropna().to_list()
+    lb_y = fulldata['Labels'].dropna().to_list()
+    emyy = [trend_mapping[em] for em in em_y]
+    lbyy = [trend_mapping[em] for em in lb_y]
+
+    acc, prec, recall, f1 = cal_accuracy(ticker, lbyy, emyy, model_name)
+    new_row =[ticker,'4MAs',window_days, alpha, epochs, predict_days, batch_size,acc, prec, recall, f1]
+    result_df.loc[len(result_df)] = new_row
+    result_df.to_csv(result_file, index=False)
+    return result_df
 
 if __name__ == "__main__":
-    ticker = "AAPL"
-    days = 20
-    alpha = 0.5
-    main(ticker, days, alpha)
+
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description="Run TensorFlow model with specified arguments")
+    parser.add_argument('-t', '--ticker', dest='ticker', type=str, help="ticker for predict", default='')
+    parser.add_argument('-w', '--window_days', dest='window_days', type=int, help="window days for training", default=25)
+    parser.add_argument('-a', '--alpha', dest='alpha', type=float, help="alpha for model training", default=0.5)
+    parser.add_argument('-e', '--epochs', dest='epochs', type=int, default=25, help="epochs for training")
+    parser.add_argument('-b', '--batch_size', dest='batch_size', default=32, type=int, help="batch size for training")
+    parser.add_argument('-p', '--predict_days', dest='predict_days', default=5, type=int, help="number of days from today to predict")
+
+    args = parser.parse_args()
+    # Access arguments
+    ticker = args.ticker
+    window_days = args.window_days
+    alpha = args.alpha
+    epochs = args.epochs
+    predict_days = args.predict_days   
+    batch_size = args.batch_size
+
+    column_names=['ticker','model','window_days','alpha','epochs','predict_days','batch_size','accuracy','precision','recall','f1']
+    if os.path.exists(result_file):
+        print(f"Reload {result_file} for append result.")
+        result = pd.read_csv(result_file)
+    else:
+        print(f"Create {result_file}")
+        result=pd.DataFrame(columns=column_names)
+  
+    if len(ticker)> 0:
+        result = main(ticker, window_days, alpha, epochs, predict_days, batch_size, result)
+    else:
+        print("No ticker provided, exiting.")
+
+    print(result)

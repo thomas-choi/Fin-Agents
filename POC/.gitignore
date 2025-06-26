@@ -1,2 +1,13 @@
 train_*
 test_*
+
+# local ignore
+POC/models/
+POC/test/
+POC/train/
+POC/test_metadata/
+POC/train_metadata/
+POC/data/
+
+*.png
+data/
