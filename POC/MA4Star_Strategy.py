@@ -19,6 +19,10 @@ result_file = "4MAs_result.csv"
 LABEL_STAR = "EMStrend"
 # LABEL_STAR = "Labels"
 
+UP_TREND = 1
+DOWN_TREND = -1
+SIDEWAY_TREND = 0
+
 # Step 1: Calculate EMAs and generate charts with price-based labeling
 def calculate_emas(data, periods=[5, 10, 20, 30]):
     for period in periods:
@@ -108,7 +112,7 @@ def calulate_Alltrend(data_, gap_, alpha_):
 
         if next_close > current_close + alpha_ * sigma:
             labels.append("UP")
-            data_.at[data_.index[i], 'Labels'] = "UP"
+            data_.at[data_.index[i], 'Labels'] = UP_TREND
         elif next_close < current_close - alpha_ * sigma:
             labels.append("DOWN")
             data_.at[data_.index[i], 'Labels'] = "DOWN"
@@ -122,7 +126,7 @@ def calulate_Alltrend(data_, gap_, alpha_):
         ema20 = prev_day['EMA_20']
         ema30 = prev_day['EMA_30']
         if ema5 > ema10 > ema20 > ema30:
-            data_.at[data_.index[i], 'EMStrend'] = "UP"
+            data_.at[data_.index[i], 'EMStrend'] = UP_TREND
         elif ema30 > ema20 > ema10 > ema5:
             data_.at[data_.index[i], 'EMStrend'] = "DOWN"
         else:
@@ -146,13 +150,13 @@ def calulate_trend(data_, gap_, alpha_):
 
         if next_close > current_close + alpha_ * sigma:
             labels.append("UP")
-            data_.at[data_.index[lastdayptr], 'Labels'] = "UP"
+            data_.at[data_.index[lastdayptr], 'Labels'] = UP_TREND
         elif next_close < current_close - alpha_ * sigma:
             labels.append("DOWN")
-            data_.at[data_.index[lastdayptr], 'Labels'] = "DOWN"
+            data_.at[data_.index[lastdayptr], 'Labels'] = -1
         else:
             labels.append("SIDEWAY")
-            data_.at[data_.index[lastdayptr], 'Labels'] = "SIDEWAY"
+            data_.at[data_.index[lastdayptr], 'Labels'] = 0
 
     return data_
 
@@ -167,7 +171,7 @@ def calulate_EMStrend(data_, gap_, alpha_):
         ema30 = last_day['EMA_30']
         
         if ema5 > ema10 > ema20 > ema30:
-            data_.at[data_.index[i+1], 'EMStrend'] = "UP"
+            data_.at[data_.index[i+1], 'EMStrend'] = UP_TREND
         elif ema30 > ema20 > ema10 > ema5:
             data_.at[data_.index[i+1], 'EMStrend'] = "DOWN"
         else:
@@ -199,7 +203,16 @@ def generate_candlestick_with_emas(ticker, gap, days, alpha, train_name, test_na
     
     # Download data
     try:
-        data = yf.download(ticker, period="2y", progress=False)
+        filename=os.path.join("data", f"{ticker}_data.csv")
+        if os.path.exists(filename):
+            print(f"Loading data from {filename}")
+            data = pd.read_csv(filename, index_col=0, parse_dates=True)
+        else:
+            print(f"Downloading data for {ticker} from Yahoo Finance")
+            # Download data for the last 4 years
+            # period="4y" to ensure we have enough data for trend calculation
+            data = yf.download(ticker, period="4y", progress=False)
+            data.to_csv(filename, index=False)
     except Exception as e:
         print(f"Error downloading data for {ticker}: {e}")
         return [], [], [], [], None
@@ -459,17 +472,16 @@ def cal_accuracy(ticker, y_test, y_pred_classes, model_name):
     plt.close()
     return accuracy, precision, recall, f1
 
-# Step 8: Main function
-def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_):
+def prepare_data(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_):
     # Generate and split data
     train_p = f"{ticker}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}_{lookback_}"
     test_p = f"{ticker}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}_{lookback_}"
     train_charts, train_labels, test_charts, test_labels, fulldata = generate_candlestick_with_emas(ticker, predict_days, window_days, alpha,
                                                                                                    train_p, test_p, lookback_)
-
+    
     if not train_charts or not test_charts or fulldata is None:
         print("No charts generated or invalid data, exiting.")
-        return result_df
+        return result_df, fulldata
         
     # dump the fulldata with all calculated EMAs and labels
     fulldata.to_csv(os.path.join("data", f"fulldata_{ticker}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}_{lookback_}.csv"), index=True)
@@ -479,6 +491,13 @@ def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df
     print(f"EMStrend labels: {len(em_y)}")
     lb_y = fulldata['Labels'].dropna()
     print(f"Price-based labels: {len(lb_y)}")
+
+    return result_df, fulldata         
+
+# Step 8: Main function
+def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_):
+    # parepare data
+    result_df, fulldata = prepare_data(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_)
 
     # Load training and testing data
     X_train, y_train = load_data(os.path.join("train_metadata", f"{train_p}_metadata.csv"))
@@ -544,6 +563,7 @@ if __name__ == "__main__":
     parser.add_argument('-b', '--batch_size', dest='batch_size', type=int, help="Batch size for training", default=32)
     parser.add_argument('-p', '--predict_days', dest='predict_days', type=int, help="Number of days to predict", default=2)
     parser.add_argument('-l', '--lookback', dest='lookback', type=int, help="Number of days for identify Star", default=5)
+    parser.add_argument('-d', '--data', dest='data', action='store_true', default=False)
 
     args = parser.parse_args()
     # Access arguments
@@ -564,7 +584,10 @@ if __name__ == "__main__":
         result = pd.DataFrame(columns=column_names)
   
     if len(ticker) > 0:
-        result = main(ticker, window_days, alpha, epochs, predict_days, batch_size, result, star_lookback)
+        if args.data:
+            result_df, fulldata  = prepare_data(ticker, window_days, alpha, epochs, predict_days, batch_size, result, star_lookback)
+        else:
+            result = main(ticker, window_days, alpha, epochs, predict_days, batch_size, result, star_lookback)
     else:
         print("No ticker provided, exiting.")
 

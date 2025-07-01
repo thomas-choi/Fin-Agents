@@ -14,10 +14,11 @@ RUN groupadd -g ${GROUP_ID} ${USER_NAME} && \
 WORKDIR /workdir
 
 # Copy the requirements.txt file from the local project folder
-COPY --chown=${USER_NAME}:${USER_NAME} requirements.txt .
+COPY --chown=${USER_NAME}:${USER_NAME} requirements_docker.txt .
 
 # Install Python packages from requirements.txt globally as root
-RUN if [ -f requirements_docker.txt ]; then pip install --no-cache-dir -r requirements_docker.txt; fi
+# RUN if [ -f requirements_docker.txt ]; then pip install --no-cache-dir -r requirements_docker.txt; fi
+RUN pip install --no-cache-dir -r requirements_docker.txt
 
 # Update PATH to include user's local bin directory
 ENV PATH="/home/${USER_NAME}/.local/bin:${PATH}"
@@ -31,7 +32,7 @@ USER ${USER_NAME}
 # Set the command to run Jupyter Notebook in /workdir, binding to all interfaces
 CMD ["/bin/bash", "-c", "jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --notebook-dir=/workdir"]
 
-# docker build --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -f my-tf-jupyter -t my-tf-jupyter .
+# docker build --no-cache --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -f my-tf-jupyter -t my-tf-jupyter .
 # RUN a jupyter notebook
 # docker run -it --gpus all -v $(pwd):/workdir -p 8888:8888 my-tf-jupyter
 # RUN a bash 
