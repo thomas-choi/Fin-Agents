@@ -19,9 +19,10 @@ result_file = "4MAs_result.csv"
 LABEL_STAR = "EMStrend"
 # LABEL_STAR = "Labels"
 
-UP_TREND = 1
-DOWN_TREND = -1
-SIDEWAY_TREND = 0
+UP_TREND = "UP"
+DOWN_TREND = "DOWN"
+SIDEWAY_TREND = "SIDEWAY"
+LABEL_L = [UP_TREND, DOWN_TREND, SIDEWAY_TREND]
 
 # Step 1: Calculate EMAs and generate charts with price-based labeling
 def calculate_emas(data, periods=[5, 10, 20, 30]):
@@ -37,7 +38,7 @@ def detect_rising_star(data, idx, lookback):
     # Check for downtrend: previous 5 candlesticks' Labels must be "DOWN"
     if lookback > 0:
         prev_labels = data[LABEL_STAR].iloc[idx-nback:idx-2]
-        if not all(label == "DOWN" for label in prev_labels if label is not None):
+        if not all(label == DOWN_TREND for label in prev_labels if label is not None):
             return False
     
     # Check three candlestick pattern
@@ -69,7 +70,7 @@ def detect_evening_star(data, idx, lookback):
     # Check for uptrend: previous 5 candlesticks' Labels must be "UP"
     if lookback > 0:
         prev_labels = data[LABEL_STAR].iloc[idx-nback:idx-2]
-        if not all(label == "UP" for label in prev_labels if label is not None):
+        if not all(label == UP_TREND for label in prev_labels if label is not None):
             return False
     
     # Check three candlestick pattern
@@ -111,14 +112,14 @@ def calulate_Alltrend(data_, gap_, alpha_):
         print("Close on [", chart_data.index[0], "]=", current_close, "[", data_.index[-1], "]=", next_close)
 
         if next_close > current_close + alpha_ * sigma:
-            labels.append("UP")
+            labels.append(UP_TREND)
             data_.at[data_.index[i], 'Labels'] = UP_TREND
         elif next_close < current_close - alpha_ * sigma:
-            labels.append("DOWN")
-            data_.at[data_.index[i], 'Labels'] = "DOWN"
+            labels.append(DOWN_TREND)
+            data_.at[data_.index[i], 'Labels'] = DOWN_TREND
         else:
-            labels.append("SIDEWAY")
-            data_.at[data_.index[i], 'Labels'] = "SIDEWAY"
+            labels.append(SIDEWAY_TREND)
+            data_.at[data_.index[i], 'Labels'] = SIDEWAY_TREND
 
         prev_day = data_.iloc[i-1]
         ema5 = prev_day['EMA_5']
@@ -128,54 +129,10 @@ def calulate_Alltrend(data_, gap_, alpha_):
         if ema5 > ema10 > ema20 > ema30:
             data_.at[data_.index[i], 'EMStrend'] = UP_TREND
         elif ema30 > ema20 > ema10 > ema5:
-            data_.at[data_.index[i], 'EMStrend'] = "DOWN"
+            data_.at[data_.index[i], 'EMStrend'] = DOWN_TREND
         else:
-            data_.at[data_.index[i], 'EMStrend'] = "SIDEWAY"      
+            data_.at[data_.index[i], 'EMStrend'] = SIDEWAY_TREND    
 
-    return data_
-
-def calulate_trend(data_, gap_, alpha_):
-    labels = []
-    for i in range(len(data_) - gap_ - 1):
-        lastdayptr = i+gap_
-        chart_data = data_.iloc[i:lastdayptr]
-        if len(chart_data) != gap_:
-            continue
-        
-        # Label based on price change
-        current_close = chart_data['Close'].iloc[0]
-        next_close = chart_data['Close'].iloc[-1]
-        sigma = chart_data['Close'].std()
-        print("Close on [", chart_data.index[0], "]=", current_close, "[", data_.index[-1], "]=", next_close)
-
-        if next_close > current_close + alpha_ * sigma:
-            labels.append("UP")
-            data_.at[data_.index[lastdayptr], 'Labels'] = UP_TREND
-        elif next_close < current_close - alpha_ * sigma:
-            labels.append("DOWN")
-            data_.at[data_.index[lastdayptr], 'Labels'] = -1
-        else:
-            labels.append("SIDEWAY")
-            data_.at[data_.index[lastdayptr], 'Labels'] = 0
-
-    return data_
-
-def calulate_EMStrend(data_, gap_, alpha_):
-    for i in range(len(data_) - gap_ - 1):
-        # Label based on EMA ordering on the last day
-        lastdayptr = i+gap_
-        last_day = data_.iloc[i]
-        ema5 = last_day['EMA_5']
-        ema10 = last_day['EMA_10']
-        ema20 = last_day['EMA_20']
-        ema30 = last_day['EMA_30']
-        
-        if ema5 > ema10 > ema20 > ema30:
-            data_.at[data_.index[i+1], 'EMStrend'] = UP_TREND
-        elif ema30 > ema20 > ema10 > ema5:
-            data_.at[data_.index[i+1], 'EMStrend'] = "DOWN"
-        else:
-            data_.at[data_.index[i+1], 'EMStrend'] = "SIDEWAY"
     return data_
 
 def find_RE_star(data_, gap_, lookback_):
@@ -193,11 +150,11 @@ def find_RE_star(data_, gap_, lookback_):
     
     return data_
 
-def generate_candlestick_with_emas(ticker, gap, days, alpha, train_name, test_name, lback):
-    print(f"generate_candlestick_with_emas {ticker} with predict_days/gap={gap}, days={days}, alpha={alpha}, train_name={train_name}, test_name={test_name} lookback={lback}")
+def generate_candlestick_with_emas(ticker, gap, days, alpha, datalabel_, lback):
+    print(f"generate_candlestick_with_emas {ticker} with predict_days/gap={gap}, days={days}, alpha={alpha}, datalabel={datalabel_} lookback={lback}")
     # Create directories for training and testing images
-    train_dir = os.path.join("train", train_name)
-    test_dir = os.path.join("test", test_name)
+    train_dir = os.path.join("train", datalabel_)
+    test_dir = os.path.join("test", datalabel_)
     os.makedirs(train_dir, exist_ok=True)
     os.makedirs(test_dir, exist_ok=True)
     
@@ -212,7 +169,9 @@ def generate_candlestick_with_emas(ticker, gap, days, alpha, train_name, test_na
             # Download data for the last 4 years
             # period="4y" to ensure we have enough data for trend calculation
             data = yf.download(ticker, period="4y", progress=False)
-            data.to_csv(filename, index=False)
+            data.columns = [col[0] for col in data.columns]
+            print(data.info())
+            data.to_csv(filename)
     except Exception as e:
         print(f"Error downloading data for {ticker}: {e}")
         return [], [], [], [], None
@@ -228,8 +187,6 @@ def generate_candlestick_with_emas(ticker, gap, days, alpha, train_name, test_na
         print(f"Error: DataFrame missing required columns: {required_cols}")
         return [], [], [], [], None
     
-    data.columns = [col[0] for col in data.columns]
-    print(data.info())
     # Ensure numeric data and handle NaN
     for col in required_cols:
         data[col] = pd.to_numeric(data[col], errors='coerce')
@@ -256,10 +213,7 @@ def generate_candlestick_with_emas(ticker, gap, days, alpha, train_name, test_na
     # Pre-compute Labels for the entire dataset
 
     data = calulate_Alltrend(data, gap, alpha)  # Ignore returned labels, use data['Labels']
-
-    # data = calulate_trend(data, gap, alpha)  # Ignore returned labels, use data['Labels']
-    # data = calulate_EMStrend(data, gap, alpha)
-        
+  
     # find Rising Star and Evening Star patterns
     data = find_RE_star(data, gap, lback)
 
@@ -352,11 +306,11 @@ def generate_candlestick_with_emas(ticker, gap, days, alpha, train_name, test_na
     # Save metadata to CSV
     train_df = pd.DataFrame({"chart_path": train_chart_paths, "label": train_labels})
     test_df = pd.DataFrame({"chart_path": test_chart_paths, "label": test_labels})
-    train_fullp = os.path.join("train_metadata", f"{train_name}_metadata.csv")
+    train_fullp = os.path.join("train_metadata", f"{datalabel_}_metadata.csv")
     print(train_fullp)
     os.makedirs(os.path.dirname(train_fullp), exist_ok=True)
     train_df.to_csv(train_fullp, index=False)
-    test_fullp = os.path.join("test_metadata", f"{test_name}_metadata.csv")
+    test_fullp = os.path.join("test_metadata", f"{datalabel_}_metadata.csv")
     print(test_fullp)
     os.makedirs(os.path.dirname(test_fullp), exist_ok=True)
     test_df.to_csv(test_fullp, index=False)
@@ -384,7 +338,7 @@ def load_data(csv_path):
         img = preprocess_image(row['chart_path'])
         if img is not None:
             X.append(img)
-            y.append(["UP", "DOWN", "SIDEWAY"].index(row['label']))
+            y.append(LABEL_L.index(row['label']))
     return np.array(X), np.array(y)
 
 # Step 4: Define multiple models
@@ -430,16 +384,16 @@ def build_dense_model():
     return model, "Dense"
 
 # Step 5: Plot and save epoch vs. accuracy
-def plot_accuracy(ticker, history, model_name):
+def plot_accuracy(ticker, history, model_name, model_label):
     plt.figure(figsize=(8, 6))
     plt.plot(history.history['accuracy'], label='Training Accuracy')
     plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
-    plt.title(f'{ticker}_{model_name} Accuracy vs. Epoch')
+    plt.title(f'{model_label}_{model_name} Accuracy vs. Epoch')
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
     plt.legend()
     plt.grid(True)
-    plt.savefig(f"{ticker}_{model_name}_accuracy_plot.png")
+    plt.savefig(os.path.join("tperf", f"{model_label}_{model_name}_accuracy_plot.png"))
     plt.close()
 
 # Step 6: Evaluate model performance
@@ -464,7 +418,7 @@ def cal_accuracy(ticker, y_test, y_pred_classes, model_name):
     # Confusion matrix
     cm = confusion_matrix(y_test, y_pred_classes)
     plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=["UP", "DOWN", "SIDEWAY"], yticklabels=["UP", "DOWN", "SIDEWAY"])
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=LABEL_L, yticklabels=LABEL_L)
     plt.title(f"{ticker}_{model_name} Confusion Matrix")
     plt.xlabel("Predicted")
     plt.ylabel("True")
@@ -472,19 +426,23 @@ def cal_accuracy(ticker, y_test, y_pred_classes, model_name):
     plt.close()
     return accuracy, precision, recall, f1
 
-def prepare_data(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_):
+def prepare_data(ticker, window_days, alpha, predict_days, lookback_, data_label_):
     # Generate and split data
-    train_p = f"{ticker}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}_{lookback_}"
-    test_p = f"{ticker}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}_{lookback_}"
-    train_charts, train_labels, test_charts, test_labels, fulldata = generate_candlestick_with_emas(ticker, predict_days, window_days, alpha,
-                                                                                                   train_p, test_p, lookback_)
+    fulldata_name = os.path.join("data", f"fulldata_{data_label_}.csv")
+
+    if os.path.exists(fulldata_name):
+        print(f"{fulldata_name} already exists, skipping prepare data.")
+        full_data = pd.read_csv(fulldata_name)
+        return full_data
     
+    train_charts, train_labels, test_charts, test_labels, fulldata = generate_candlestick_with_emas(ticker, predict_days, window_days, alpha, data_label_, lookback_)
+
     if not train_charts or not test_charts or fulldata is None:
         print("No charts generated or invalid data, exiting.")
-        return result_df, fulldata
+        return fulldata
         
     # dump the fulldata with all calculated EMAs and labels
-    fulldata.to_csv(os.path.join("data", f"fulldata_{ticker}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}_{lookback_}.csv"), index=True)
+    fulldata.to_csv(os.path.join("data", f"fulldata_{data_label_}.csv"), index=True)
     print(f"Fulldata saved for {ticker} with {len(fulldata)} rows.")
 
     em_y = fulldata['EMStrend'].dropna()
@@ -492,35 +450,37 @@ def prepare_data(ticker, window_days, alpha, epochs, predict_days, batch_size, r
     lb_y = fulldata['Labels'].dropna()
     print(f"Price-based labels: {len(lb_y)}")
 
-    return result_df, fulldata         
+    return fulldata         
 
 # Step 8: Main function
-def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_):
-    # parepare data
-    result_df, fulldata = prepare_data(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_)
+def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_, data_label_):
 
     # Load training and testing data
-    X_train, y_train = load_data(os.path.join("train_metadata", f"{train_p}_metadata.csv"))
-    X_test, y_test = load_data(os.path.join("test_metadata", f"{test_p}_metadata.csv"))
-    
+    X_train, y_train = load_data(os.path.join("train_metadata", f"{data_label}_metadata.csv"))
+    X_test, y_test = load_data(os.path.join("test_metadata", f"{data_label}_metadata.csv"))
+    fulldata = pd.read_csv(os.path.join("data", f"fulldata_{data_label_}.csv"))
+
     if X_train.size == 0 or X_test.size == 0:
         print("No valid images loaded, exiting.")
         return result_df
         
     # Define models to train
-    models = [build_cnn_model(), build_cnn_lstm_model(), build_dense_model()]
-    
+    # models = [build_cnn_model(), build_cnn_lstm_model(data_label), build_dense_model()]
+    models = [build_cnn_model(),  build_dense_model()]
+
     # Train and evaluate each model
     for model, model_name in models:
         # if model file exist, skip the process
-        model_file = os.path.join("models", f"{ticker}_{model_name}_{window_days}_{alpha}_{epochs}_{predict_days}_{batch_size}_{lookback_}.pkl")
+        model_label = f"{data_label}_{model_name}_{epochs}_{batch_size}"
+        model_file = os.path.join("models", f"{model_label}.pkl")
+
         if os.path.exists(model_file):
             print(f"{model_file} already exists, skipping training.")
             continue
         print(f"\nTraining {model_name}...")
         try:
             history = model.fit(X_train, y_train, epochs=epochs, validation_split=0.2, batch_size=batch_size, verbose=1)
-            plot_accuracy(ticker, history, model_name)
+            plot_accuracy(ticker, history, model_name, model_label)
             acc, prec, recall, f1 = evaluate_model(ticker, model, X_test, y_test, model_name)
             # Append the row
             new_row = [ticker, model_name, window_days, alpha, epochs, predict_days, batch_size, lookback_, acc, prec, recall, f1]
@@ -584,10 +544,13 @@ if __name__ == "__main__":
         result = pd.DataFrame(columns=column_names)
   
     if len(ticker) > 0:
+        # parepare data
+        data_label = f"{ticker}_{window_days}_{alpha}_{predict_days}_{star_lookback}"
         if args.data:
-            result_df, fulldata  = prepare_data(ticker, window_days, alpha, epochs, predict_days, batch_size, result, star_lookback)
+            fulldata = prepare_data(ticker, window_days, alpha, predict_days, star_lookback, data_label)
         else:
-            result = main(ticker, window_days, alpha, epochs, predict_days, batch_size, result, star_lookback)
+            fulldata = prepare_data(ticker, window_days, alpha, predict_days, star_lookback, data_label)
+            result = main(ticker, window_days, alpha, epochs, predict_days, batch_size, result, star_lookback, data_label)
     else:
         print("No ticker provided, exiting.")
 

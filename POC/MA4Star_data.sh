@@ -5,7 +5,7 @@ PYTHON_SCRIPT="/home/thomas/projects/Fin-Agents/POC/MA4Star_Strategy.py"
 
 # Path to the CSV file containing tickers
 TICKERS_CSV="hsi_components.csv"
-TICKERS_CSV="test.csv"
+# TICKERS_CSV="test.csv"
 
 # Check if Python is installed
 if ! command -v python3 &> /dev/null
@@ -40,10 +40,11 @@ fi
 # TICKERS=("^HSI" "1109.HK")
 WIN_DAYS_L=("30" "55" )          
 ALPHA_L=("0.4" "0.5" "0.6")                 
-EPOCHS_L=("30") 
 PREDICT_DAYS_L=("2" "5")    
-LOOKBK_L=("0" "2" "4")
-BATCH_SIZE_L=("32")           
+LOOKBK_L=("0")
+BATCH_SIZE_L=("32")     
+# Training parameters      
+EPOCHS_L=("30") 
 
 # Nested loops to iterate through all combinations
 for ticker in "${TICKERS[@]}"; do
