@@ -38,9 +38,9 @@ fi
 
 # Define argument lists (numeric values for batch_size and learning_rate)
 # TICKERS=("^HSI" "1109.HK")
-WIN_DAYS_L=("30" "55" )          
-ALPHA_L=("0.4" "0.5" "0.6")                 
-PREDICT_DAYS_L=("2" "5")    
+WIN_DAYS_L=( "55" )          
+ALPHA_L=( "0.5")                 
+PREDICT_DAYS_L=( "5")    
 LOOKBK_L=("0")
 BATCH_SIZE_L=("32")     
 # Training parameters      
@@ -56,8 +56,8 @@ for ticker in "${TICKERS[@]}"; do
                         for lookback in "${LOOKBK_L[@]}"; do
    
                             # Print the current combination being executed
-                            echo ">> $PYTHON_SCRIPT -t $ticker -w $window_days -a $alpha -e $epochs -p $predict_days -b $batch_size -l $lookback -d"
-                            python3 "$PYTHON_SCRIPT" -t "$ticker" -w "$window_days" -a "$alpha" -e "$epochs" -p "$predict_days" -b "$batch_size" -l "$lookback" -d
+                            echo ">> $PYTHON_SCRIPT -t $ticker -w $window_days -a $alpha -e $epochs -p $predict_days -b $batch_size -l $lookback $@"
+                            python3 "$PYTHON_SCRIPT" -t "$ticker" -w "$window_days" -a "$alpha" -e "$epochs" -p "$predict_days" -b "$batch_size" -l "$lookback" "$@"
                             if [ $? -eq 0 ]; then
                                 echo "Python script executed successfully for combination: $arg1 $arg2 $arg3"
                             else

@@ -37,7 +37,7 @@ fi
 
 
 # Define argument lists (numeric values for batch_size and learning_rate)
-# TICKERS=("^HSI" "1109.HK")
+TICKERS=("^HSI" "1109.HK")
 WIN_DAYS_L=("30" "55" )          
 ALPHA_L=("0.4" "0.5" "0.6")                 
 PREDICT_DAYS_L=("2" "5")    

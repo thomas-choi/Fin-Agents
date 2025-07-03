@@ -147,8 +147,22 @@ def find_RE_star(data_, gap_, lookback_):
     # Debug: Check if markers are all NaN
     print(f"Rising Star markers: {data_['RisingStar'].notna().sum()} non-NaN values")
     print(f"Evening Star markers: {data_['EveningStar'].notna().sum()} non-NaN values")
-    
     return data_
+
+def combine_data(datalabel_, combinedlabel_):
+    combined_filename=f"{combinedlabel_}_metadata.csv"
+    print(f"combine_data with datalabel={datalabel_}, combined_filename={combined_filename}")
+    column_names = ['chart_path', 'label']
+    test_combined_fd = pd.read_csv(os.path.join("test_metadata", combined_filename), usecols=column_names) if os.path.exists(os.path.join("test_metadata", combined_filename)) else pd.DataFrame(columns=column_names)
+    train_combined_fd = pd.read_csv(os.path.join("train_metadata", combined_filename), usecols=column_names) if os.path.exists(os.path.join("train_metadata", combined_filename)) else pd.DataFrame(columns=column_names)
+    train_fullp = os.path.join("train_metadata", f"{datalabel_}_metadata.csv")
+    test_fullp = os.path.join("test_metadata", f"{datalabel_}_metadata.csv")
+    train_df = pd.read_csv(train_fullp)
+    test_df = pd.read_csv(test_fullp)
+    test_combined_fd = pd.concat([test_combined_fd, test_df], ignore_index=True)
+    train_combined_fd = pd.concat([train_combined_fd, train_df], ignore_index=True) 
+    test_combined_fd.to_csv(os.path.join("test_metadata", combined_filename), index=False)
+    train_combined_fd.to_csv(os.path.join("train_metadata", combined_filename), index=False)
 
 def generate_candlestick_with_emas(ticker, gap, days, alpha, datalabel_, lback):
     print(f"generate_candlestick_with_emas {ticker} with predict_days/gap={gap}, days={days}, alpha={alpha}, datalabel={datalabel_} lookback={lback}")
@@ -327,9 +341,12 @@ def preprocess_image(image_path):
         return None
 
 # Step 3: Load data from CSV
-def load_data(csv_path):
+def load_data(csv_path, limit=20000):
     try:
-        df = pd.read_csv(csv_path)
+        df = pd.read_csv(csv_path).sample(frac=1, random_state=42).reset_index(drop=True)
+        if len(df) > limit:
+            df = df.head(limit)
+        print(f"Loaded {len(df)} records from {csv_path}")
     except FileNotFoundError:
         print(f"Error: Metadata file {csv_path} not found.")
         return np.array([]), np.array([])
@@ -388,28 +405,28 @@ def plot_accuracy(ticker, history, model_name, model_label):
     plt.figure(figsize=(8, 6))
     plt.plot(history.history['accuracy'], label='Training Accuracy')
     plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
-    plt.title(f'{model_label}_{model_name} Accuracy vs. Epoch')
+    plt.title(f'{model_label} Accuracy vs. Epoch')
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
     plt.legend()
     plt.grid(True)
-    plt.savefig(os.path.join("tperf", f"{model_label}_{model_name}_accuracy_plot.png"))
+    plt.savefig(os.path.join("tperf", f"{model_label}_accuracy_plot.png"))
     plt.close()
 
 # Step 6: Evaluate model performance
-def evaluate_model(ticker, model, X_test, y_test, model_name):
+def evaluate_model(ticker, model, X_test, y_test, model_name, model_label):
     y_pred = model.predict(X_test)
     y_pred_classes = np.argmax(y_pred, axis=1)
     
-    return cal_accuracy(ticker, y_test, y_pred_classes, model_name)
+    return cal_accuracy(ticker, y_test, y_pred_classes, model_name, model_label)
 
-def cal_accuracy(ticker, y_test, y_pred_classes, model_name):
+def cal_accuracy(ticker, y_test, y_pred_classes, model_name, model_label_):
     accuracy = accuracy_score(y_test, y_pred_classes)
     precision = precision_score(y_test, y_pred_classes, average='weighted', zero_division=0)
     recall = recall_score(y_test, y_pred_classes, average='weighted', zero_division=0)
     f1 = f1_score(y_test, y_pred_classes, average='weighted', zero_division=0)
     
-    print(f"\n{model_name} Performance:")
+    print(f"\n{model_label_} Performance:")
     print(f"Accuracy: {accuracy:.4f}")
     print(f"Precision: {precision:.4f}")
     print(f"Recall: {recall:.4f}")
@@ -419,10 +436,10 @@ def cal_accuracy(ticker, y_test, y_pred_classes, model_name):
     cm = confusion_matrix(y_test, y_pred_classes)
     plt.figure(figsize=(8, 6))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=LABEL_L, yticklabels=LABEL_L)
-    plt.title(f"{ticker}_{model_name} Confusion Matrix")
+    plt.title(f"{ticker}_{model_label_} Confusion Matrix")
     plt.xlabel("Predicted")
     plt.ylabel("True")
-    plt.savefig(f"{ticker}_{model_name}_confusion_matrix.png")
+    plt.savefig(os.path.join("matrix", f"{ticker}_{model_label_}_confusion_matrix.png"))
     plt.close()
     return accuracy, precision, recall, f1
 
@@ -452,26 +469,24 @@ def prepare_data(ticker, window_days, alpha, predict_days, lookback_, data_label
 
     return fulldata         
 
-# Step 8: Main function
-def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_, data_label_):
-
+def model_training(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df_, lookback_, data_label_, result_file_):
+    print(f"model_training({ticker}, {window_days}, {alpha}, {epochs}, {predict_days}, {batch_size}, result_df, {lookback_}, {data_label_}, {result_file_}")
     # Load training and testing data
-    X_train, y_train = load_data(os.path.join("train_metadata", f"{data_label}_metadata.csv"))
-    X_test, y_test = load_data(os.path.join("test_metadata", f"{data_label}_metadata.csv"))
-    fulldata = pd.read_csv(os.path.join("data", f"fulldata_{data_label_}.csv"))
-
+    X_train, y_train = load_data(os.path.join("train_metadata", f"{data_label_}_metadata.csv"), limit=5000)
+    X_test, y_test = load_data(os.path.join("test_metadata", f"{data_label_}_metadata.csv"), limit=2000)
+    print(f"Loaded {len(X_train)} training images and {len(X_test)} testing images for {ticker}.")
     if X_train.size == 0 or X_test.size == 0:
         print("No valid images loaded, exiting.")
-        return result_df
-        
+        return result_df_
+
     # Define models to train
-    # models = [build_cnn_model(), build_cnn_lstm_model(data_label), build_dense_model()]
+    # models = [build_cnn_model(), build_cnn_lstm_model(data_label_), build_dense_model()]
     models = [build_cnn_model(),  build_dense_model()]
 
     # Train and evaluate each model
     for model, model_name in models:
         # if model file exist, skip the process
-        model_label = f"{data_label}_{model_name}_{epochs}_{batch_size}"
+        model_label = f"{data_label_}_{model_name}_{epochs}_{batch_size}"
         model_file = os.path.join("models", f"{model_label}.pkl")
 
         if os.path.exists(model_file):
@@ -481,11 +496,11 @@ def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df
         try:
             history = model.fit(X_train, y_train, epochs=epochs, validation_split=0.2, batch_size=batch_size, verbose=1)
             plot_accuracy(ticker, history, model_name, model_label)
-            acc, prec, recall, f1 = evaluate_model(ticker, model, X_test, y_test, model_name)
+            acc, prec, recall, f1 = evaluate_model(ticker, model, X_test, y_test, model_name, model_label)
             # Append the row
             new_row = [ticker, model_name, window_days, alpha, epochs, predict_days, batch_size, lookback_, acc, prec, recall, f1]
-            result_df.loc[len(result_df)] = new_row
-            result_df.to_csv(result_file, index=False)
+            result_df_.loc[len(result_df_)] = new_row
+            result_df_.to_csv(result_file_, index=False)
             os.makedirs(os.path.dirname(model_file), exist_ok=True)
             with open(model_file, 'wb') as file:
                 pickle.dump(model, file)
@@ -497,6 +512,15 @@ def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df
         tf.keras.backend.clear_session()
         gc.collect()
 
+    return result_df_
+
+# Step 8: Main function
+def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_, data_label_):
+
+    result_df = model_training(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_, data_label_, result_file)
+
+    fulldata = pd.read_csv(os.path.join("data", f"fulldata_{data_label_}.csv"))
+
     trend_mapping = {"UP": 1, "DOWN": 2, "SIDEWAY": 3}
     em_y = fulldata['EMStrend'].dropna().to_list()
     lb_y = fulldata['Labels'].dropna().to_list()
@@ -504,7 +528,7 @@ def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df
     lbyy = [trend_mapping[em] for em in lb_y]
 
     try:
-        acc, prec, recall, f1 = cal_accuracy(ticker, lbyy, emyy, model_name)
+        acc, prec, recall, f1 = cal_accuracy(ticker, lbyy, emyy, '4MAs')
         new_row = [ticker, '4MAs', window_days, alpha, epochs, predict_days, batch_size, lookback_, acc, prec, recall, f1]
         result_df.loc[len(result_df)] = new_row
         result_df.to_csv(result_file, index=False)
@@ -524,6 +548,8 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--predict_days', dest='predict_days', type=int, help="Number of days to predict", default=2)
     parser.add_argument('-l', '--lookback', dest='lookback', type=int, help="Number of days for identify Star", default=5)
     parser.add_argument('-d', '--data', dest='data', action='store_true', default=False)
+    parser.add_argument('-c', '--combine', dest='combineLabel', type=str, help="Label for combined data", default='')
+    parser.add_argument('-T', '--Training', dest='TrainLabel', type=str, help="Label for Training", default='')
 
     args = parser.parse_args()
     # Access arguments
@@ -534,6 +560,11 @@ if __name__ == "__main__":
     predict_days = args.predict_days   
     batch_size = args.batch_size
     star_lookback = args.lookback
+    combined_Label = args.combineLabel
+    TrainLabel = args.TrainLabel
+    if len(TrainLabel) > 0:
+        result_file = f"{TrainLabel}_result.csv"
+        print(f"Using training result file: {result_file}")
 
     column_names = ['ticker', 'model', 'window_days', 'alpha', 'epochs', 'predict_days', 'batch_size', "Lookback", 'accuracy', 'precision', 'recall', 'f1']
     if os.path.exists(result_file):
@@ -548,10 +579,14 @@ if __name__ == "__main__":
         data_label = f"{ticker}_{window_days}_{alpha}_{predict_days}_{star_lookback}"
         if args.data:
             fulldata = prepare_data(ticker, window_days, alpha, predict_days, star_lookback, data_label)
+        elif len(combined_Label) > 0:
+            combine_data(data_label, combined_Label)
+        elif len(TrainLabel) > 0:
+            model_training(TrainLabel, 0, 0, epochs, 0, batch_size, result, 0, TrainLabel, result_file)
         else:
             fulldata = prepare_data(ticker, window_days, alpha, predict_days, star_lookback, data_label)
             result = main(ticker, window_days, alpha, epochs, predict_days, batch_size, result, star_lookback, data_label)
+            print(result)
     else:
         print("No ticker provided, exiting.")
 
-    print(result)
