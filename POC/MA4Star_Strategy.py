@@ -570,6 +570,7 @@ if __name__ == "__main__":
     parser.add_argument('-d', '--data', dest='data', action='store_true', default=False)
     parser.add_argument('-c', '--combine', dest='combineLabel', type=str, help="Label for combined data", default='')
     parser.add_argument('-T', '--Training', dest='TrainLabel', type=str, help="Label for Training", default='')
+    parser.add_argument('-ba', '--buildall', dest='buildall', action='store_true', help="Build all models from existing pre-data", default=False)
 
     args = parser.parse_args()
     # Access arguments
@@ -600,6 +601,8 @@ if __name__ == "__main__":
         print(f"Data label: {data_label}")
         if args.data:
             fulldata = prepare_data(ticker, window_days, alpha, predict_days, star_lookback, data_label)
+        elif args.buildall:
+            result = main(ticker, window_days, alpha, epochs, predict_days, batch_size, result, star_lookback, data_label)
         elif len(combined_Label) > 0:
             combine_data(data_label, combined_Label)
         elif len(TrainLabel) > 0:

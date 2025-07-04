@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Path to your Python script
-PYTHON_SCRIPT="/home/thomas/projects/Fin-Agents/POC/MA4Star_Strategy.py"
+PYTHON_SCRIPT="$(pwd)/MA4Star_Strategy.py"
 
 # Path to the CSV file containing tickers
 TICKERS_CSV="hsi_components.csv"
