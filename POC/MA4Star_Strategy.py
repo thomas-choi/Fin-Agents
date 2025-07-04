@@ -24,6 +24,23 @@ DOWN_TREND = "DOWN"
 SIDEWAY_TREND = "SIDEWAY"
 LABEL_L = [UP_TREND, DOWN_TREND, SIDEWAY_TREND]
 
+def data_label(ticker, window_days, alpha, predict_days, star_lookback):
+    return f"{ticker}_{window_days}_{alpha}_{predict_days}_{star_lookback}"
+
+def model_label(data_label_, model_name_, epochs_, batch_size_):
+    return f"{data_label_}_{model_name_}_{epochs_}_{batch_size_}"
+
+def retreive_model(model_label):
+    model_file = os.path.join("models", f"{model_label}.pkl")
+    if os.path.exists(model_file):
+        with open(model_file, 'rb') as file:
+            model = pickle.load(file)
+        print(f"Model {model_label} loaded successfully.")
+        return model
+    else:
+        print(f"Model {model_label} not found.")
+        return None
+  
 # Step 1: Calculate EMAs and generate charts with price-based labeling
 def calculate_emas(data, periods=[5, 10, 20, 30]):
     for period in periods:
@@ -97,29 +114,31 @@ def detect_evening_star(data, idx, lookback):
     print(f"Find Evening star: lookback={lookback} at {data.index[idx]} with {candle_1['Close']}, {candle_2['Close']}, {candle_3['Close']}   ")    
     return True
 
-def calulate_Alltrend(data_, gap_, alpha_):
+def calulate_Alltrend(data_, prdict_days_, alpha_):
     labels = []
-    for i in range(1, len(data_) - gap_ - 1):
-        lastdayptr = i+gap_
-        chart_data = data_.iloc[i:lastdayptr]
-        if len(chart_data) != gap_:
-            continue
-        
-        # Label based on price change
-        current_close = chart_data['Close'].iloc[0]
-        next_close = chart_data['Close'].iloc[-1]
-        sigma = chart_data['Close'].std()
-        print("Close on [", chart_data.index[0], "]=", current_close, "[", data_.index[-1], "]=", next_close)
+    for i in range(1, len(data_) - prdict_days_ - 1):
+    
+        if prdict_days_ > 0:
+            lastdayptr = i+prdict_days_
+            chart_data = data_.iloc[i:lastdayptr]
+            if len(chart_data) != prdict_days_:
+                continue
+            
+            # Label based on price change
+            current_close = chart_data['Close'].iloc[0]
+            next_close = chart_data['Close'].iloc[-1]
+            sigma = chart_data['Close'].std()
+            print("Close on [", chart_data.index[0], "]=", current_close, "[", data_.index[-1], "]=", next_close)
 
-        if next_close > current_close + alpha_ * sigma:
-            labels.append(UP_TREND)
-            data_.at[data_.index[i], 'Labels'] = UP_TREND
-        elif next_close < current_close - alpha_ * sigma:
-            labels.append(DOWN_TREND)
-            data_.at[data_.index[i], 'Labels'] = DOWN_TREND
-        else:
-            labels.append(SIDEWAY_TREND)
-            data_.at[data_.index[i], 'Labels'] = SIDEWAY_TREND
+            if next_close > current_close + alpha_ * sigma:
+                labels.append(UP_TREND)
+                data_.at[data_.index[i], 'Labels'] = UP_TREND
+            elif next_close < current_close - alpha_ * sigma:
+                labels.append(DOWN_TREND)
+                data_.at[data_.index[i], 'Labels'] = DOWN_TREND
+            else:
+                labels.append(SIDEWAY_TREND)
+                data_.at[data_.index[i], 'Labels'] = SIDEWAY_TREND
 
         prev_day = data_.iloc[i-1]
         ema5 = prev_day['EMA_5']
@@ -486,7 +505,7 @@ def model_training(ticker, window_days, alpha, epochs, predict_days, batch_size,
     # Train and evaluate each model
     for model, model_name in models:
         # if model file exist, skip the process
-        model_label = f"{data_label_}_{model_name}_{epochs}_{batch_size}"
+        model_label = model_label(data_label_, model_name, epochs, batch_size)
         model_file = os.path.join("models", f"{model_label}.pkl")
 
         if os.path.exists(model_file):
@@ -537,6 +556,7 @@ def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df
 
     return result_df
 
+  
 if __name__ == "__main__":
     # Set up argument parser
     parser = argparse.ArgumentParser(description="Run TensorFlow model with specified arguments")
@@ -576,7 +596,8 @@ if __name__ == "__main__":
   
     if len(ticker) > 0:
         # parepare data
-        data_label = f"{ticker}_{window_days}_{alpha}_{predict_days}_{star_lookback}"
+        data_label = data_label(ticker, window_days, alpha, predict_days, star_lookback)
+        print(f"Data label: {data_label}")
         if args.data:
             fulldata = prepare_data(ticker, window_days, alpha, predict_days, star_lookback, data_label)
         elif len(combined_Label) > 0:
