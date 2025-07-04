@@ -126,6 +126,7 @@ def get_all_articles():
     visited = []
     current = {}
     export_data = []
+    ticker_articles = {} 
     for article in all_articles:
         current[article[2]] = False
     for article in all_articles:
@@ -135,16 +136,27 @@ def get_all_articles():
         visited.append(link)
         article_content = get_article_content(link, article[0])
         # Collect the article data
-        export_data.append({
+        ticker = article[2]
+        data = {
             "title": article[1].title.content,
             "link": link,
-            "ticker": article[2],
+            "ticker": ticker,
             "content": article_content
-        })
-        #print(article_content)
+        }
+        if ticker not in ticker_articles:
+            ticker_articles[ticker] = []
+        ticker_articles[ticker].append(data)
     
-    with open('articles_with_content.json', 'w', encoding='utf-8') as f:
-        json.dump(export_data, f, ensure_ascii=False, indent=2)
+    today = datetime.now().strftime('%Y%m%d')
+    base_dir = 'all_news_json'
+    output_dir = os.path.join(base_dir, f'news_json_{today}')
+    os.makedirs(output_dir, exist_ok=True)
+
+    for ticker, articles in ticker_articles.items():
+        filename = f'news_{ticker}_{today}.json'
+        filepath = os.path.join(output_dir, filename)
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(articles, f, ensure_ascii=False, indent=2)
 
 if __name__ == '__main__':
     get_all_articles()
