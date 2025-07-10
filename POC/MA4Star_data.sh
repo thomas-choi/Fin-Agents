@@ -5,7 +5,7 @@ PYTHON_SCRIPT="$(pwd)/MA4Star_Strategy.py"
 
 # Path to the CSV file containing tickers
 TICKERS_CSV="hsi_components.csv"
-# TICKERS_CSV="test.csv"
+# TICKERS_CSV="us-etf.csv"
 
 # Check if Python is installed
 if ! command -v python3 &> /dev/null
@@ -42,8 +42,8 @@ WIN_DAYS_L=( "55" )
 ALPHA_L=( "0.5")                 
 PREDICT_DAYS_L=( "5")    
 LOOKBK_L=("0")
-BATCH_SIZE_L=("32")     
 # Training parameters      
+BATCH_SIZE_L=("32")   
 EPOCHS_L=("30") 
 
 # Nested loops to iterate through all combinations

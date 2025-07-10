@@ -13,11 +13,14 @@ import shutil
 import pickle
 import gc
 import argparse
+from datetime import date
 
 result_file = "4MAs_result.csv"
 
 LABEL_STAR = "EMStrend"
 # LABEL_STAR = "Labels"
+DATA_START_DATE = date(2022, 1, 1)
+DATA_END_DATE = date(2024, 12,31)
 
 UP_TREND = "UP"
 DOWN_TREND = "DOWN"
@@ -185,11 +188,8 @@ def combine_data(datalabel_, combinedlabel_):
 
 def generate_candlestick_with_emas(ticker, gap, days, alpha, datalabel_, lback):
     print(f"generate_candlestick_with_emas {ticker} with predict_days/gap={gap}, days={days}, alpha={alpha}, datalabel={datalabel_} lookback={lback}")
-    # Create directories for training and testing images
-    train_dir = os.path.join("train", datalabel_)
-    test_dir = os.path.join("test", datalabel_)
-    os.makedirs(train_dir, exist_ok=True)
-    os.makedirs(test_dir, exist_ok=True)
+    chart_dir = os.path.join("chartdata", datalabel_)
+    os.makedirs(chart_dir, exist_ok=True)
     
     # Download data
     try:
@@ -201,7 +201,10 @@ def generate_candlestick_with_emas(ticker, gap, days, alpha, datalabel_, lback):
             print(f"Downloading data for {ticker} from Yahoo Finance")
             # Download data for the last 4 years
             # period="4y" to ensure we have enough data for trend calculation
-            data = yf.download(ticker, period="4y", progress=False)
+            if (DATA_START_DATE is not None):
+                data = yf.download(ticker, start=DATA_START_DATE, end=DATA_END_DATE, auto_adjust=False)
+            else:
+                data = yf.download(ticker, period="4y", progress=False)
             data.columns = [col[0] for col in data.columns]
             print(data.info())
             data.to_csv(filename)
@@ -284,7 +287,7 @@ def generate_candlestick_with_emas(ticker, gap, days, alpha, datalabel_, lback):
 
         start_d = chart_data.index[0].strftime('%Y%m%d')
         end_d = chart_data.index[-1].strftime('%Y%m%d')
-        chart_path = f"chart_{ticker}_{i}_{start_d}_{end_d}.png"
+        chart_path = os.path.join(chart_dir, f"chart_{ticker}_{i}_{start_d}_{end_d}.png")
         try:
             fig, ax = mpf.plot(chart_data, type='candle', addplot=ap, savefig=chart_path, warn_too_much_data=1000, returnfig=True)
             plt.close(fig)  # Close the figure to free memory
@@ -316,29 +319,9 @@ def generate_candlestick_with_emas(ticker, gap, days, alpha, datalabel_, lback):
         print(f"Error in train_test_split: {e}")
         return [], [], [], [], data
     
-    # Move charts to respective directories and update paths
-    train_chart_paths, test_chart_paths = [], []
-    for chart, label in zip(train_charts, train_labels):
-        new_path = os.path.join(train_dir, os.path.basename(chart))
-        try:
-            shutil.move(chart, new_path)
-            train_chart_paths.append(new_path)
-        except FileNotFoundError:
-            print(f"Warning: Chart {chart} not found, skipping.")
-            continue
-    
-    for chart, label in zip(test_charts, test_labels):
-        new_path = os.path.join(test_dir, os.path.basename(chart))
-        try:
-            shutil.move(chart, new_path)
-            test_chart_paths.append(new_path)
-        except FileNotFoundError:
-            print(f"Warning: Chart {chart} not found, skipping.")
-            continue
-    
     # Save metadata to CSV
-    train_df = pd.DataFrame({"chart_path": train_chart_paths, "label": train_labels})
-    test_df = pd.DataFrame({"chart_path": test_chart_paths, "label": test_labels})
+    train_df = pd.DataFrame({"chart_path": train_charts, "label": train_labels})
+    test_df = pd.DataFrame({"chart_path": test_charts, "label": test_labels})
     train_fullp = os.path.join("train_metadata", f"{datalabel_}_metadata.csv")
     print(train_fullp)
     os.makedirs(os.path.dirname(train_fullp), exist_ok=True)
@@ -505,8 +488,8 @@ def model_training(ticker, window_days, alpha, epochs, predict_days, batch_size,
     # Train and evaluate each model
     for model, model_name in models:
         # if model file exist, skip the process
-        model_label = model_label(data_label_, model_name, epochs, batch_size)
-        model_file = os.path.join("models", f"{model_label}.pkl")
+        modellabel = model_label(data_label_, model_name, epochs, batch_size)
+        model_file = os.path.join("models", f"{modellabel}.pkl")
 
         if os.path.exists(model_file):
             print(f"{model_file} already exists, skipping training.")
@@ -514,8 +497,8 @@ def model_training(ticker, window_days, alpha, epochs, predict_days, batch_size,
         print(f"\nTraining {model_name}...")
         try:
             history = model.fit(X_train, y_train, epochs=epochs, validation_split=0.2, batch_size=batch_size, verbose=1)
-            plot_accuracy(ticker, history, model_name, model_label)
-            acc, prec, recall, f1 = evaluate_model(ticker, model, X_test, y_test, model_name, model_label)
+            plot_accuracy(ticker, history, model_name, modellabel)
+            acc, prec, recall, f1 = evaluate_model(ticker, model, X_test, y_test, model_name, modellabel)
             # Append the row
             new_row = [ticker, model_name, window_days, alpha, epochs, predict_days, batch_size, lookback_, acc, prec, recall, f1]
             result_df_.loc[len(result_df_)] = new_row
