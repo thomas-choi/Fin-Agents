@@ -4,6 +4,9 @@ __pycache__/
 *$py.class
 
 models/
+data/
+chartsdata/
+Data/
 
 # C extensions
 *.so
