@@ -4,7 +4,9 @@
 PYTHON_SCRIPT="$(pwd)/MA4Star_Strategy.py"
 
 # Path to the CSV file containing tickers
-TICKERS_CSV="hsi_components.csv"
+# TICKERS_CSV="nasdaq100_components.csv"
+# TICKERS_CSV="hsi_components.csv"
+TICKERS_CSV="sp500_components.csv"
 # TICKERS_CSV="us-etf.csv"
 
 # Check if Python is installed

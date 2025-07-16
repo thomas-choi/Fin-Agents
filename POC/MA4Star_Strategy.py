@@ -208,18 +208,18 @@ def download_setup_data(ticker, predict_days, window_days, alpha, lback, start_d
             data.to_csv(filename)
     except Exception as e:
         print(f"Error downloading data for {ticker}: {e}")
-        return [], [], [], [], None
+        return None
     
     # Check if data is a valid DataFrame
     if not isinstance(data, pd.DataFrame):
         print(f"Error: Downloaded data for {ticker} is not a DataFrame, got type {type(data)}")
-        return [], [], [], [], None
+        return None
     
     # Check for required columns
     required_cols = ['Open', 'High', 'Low', 'Close']
     if not all(col in data.columns for col in required_cols):
         print(f"Error: DataFrame missing required columns: {required_cols}")
-        return [], [], [], [], None
+        return None
     
     # Ensure numeric data and handle NaN
     for col in required_cols:
@@ -229,7 +229,7 @@ def download_setup_data(ticker, predict_days, window_days, alpha, lback, start_d
     # Check if enough data is available
     if len(data) < window_days + predict_days + 7:  # Increased to account for trend check
         print(f"Error: Insufficient data for {ticker}, got {len(data)} rows, need at least {window_days + predict_days + 7}")
-        return [], [], [], [], None
+        return None
        
     # Calculate EMAs
     data = calculate_emas(data)
@@ -326,128 +326,13 @@ def generate_candlestick_with_emas(ticker, gap, days, alpha, datalabel_, lback, 
         end_d = end_date
     data = download_setup_data(ticker, gap, days, alpha, lback, start_date, end_date)
 
-    # Download data
-    # try:
-    #     filename=os.path.join("data", f"{ticker}_data.csv")
-    #     if os.path.exists(filename):
-    #         print(f"Loading data from {filename}")
-    #         data = pd.read_csv(filename, index_col=0, parse_dates=True)
-    #     else:
-    #         print(f"Downloading data for {ticker} from Yahoo Finance")
-    #         # Download data for the last 4 years
-    #         # period="4y" to ensure we have enough data for trend calculation
-    #         if (DATA_START_DATE is not None):
-    #             data = yf.download(ticker, start=DATA_START_DATE, end=DATA_END_DATE, auto_adjust=False)
-    #         else:
-    #             data = yf.download(ticker, period="4y", progress=False)
-    #         data.columns = [col[0] for col in data.columns]
-    #         print(data.info())
-    #         data.to_csv(filename)
-    # except Exception as e:
-    #     print(f"Error downloading data for {ticker}: {e}")
-    #     return [], [], [], [], None
-    
-    # # Check if data is a valid DataFrame
-    # if not isinstance(data, pd.DataFrame):
-    #     print(f"Error: Downloaded data for {ticker} is not a DataFrame, got type {type(data)}")
-    #     return [], [], [], [], None
-    
-    # # Check for required columns
-    # required_cols = ['Open', 'High', 'Low', 'Close']
-    # if not all(col in data.columns for col in required_cols):
-    #     print(f"Error: DataFrame missing required columns: {required_cols}")
-    #     return [], [], [], [], None
-    
-    # # Ensure numeric data and handle NaN
-    # for col in required_cols:
-    #     data[col] = pd.to_numeric(data[col], errors='coerce')
-    # data = data.dropna()
-    
-    # # Check if enough data is available
-    # if len(data) < days + gap + 7:  # Increased to account for trend check
-    #     print(f"Error: Insufficient data for {ticker}, got {len(data)} rows, need at least {days + gap + 7}")
-    #     return [], [], [], [], None
-       
-    # # Calculate EMAs
-    # data = calculate_emas(data)
-    
-    # data['EMStrend'] = None
-    # data['Labels'] = None
-    # data['RisingStar'] = None
-    # data['EveningStar'] = None
-    # # Convert to numeric type with np.nan for None
-    # data['RisingStar'] = pd.to_numeric(data['RisingStar'], errors='coerce')
-    # data['EveningStar'] = pd.to_numeric(data['EveningStar'], errors='coerce')
-
-    # # Pre-compute Labels for the entire dataset
-
-    # data = calulate_Alltrend(data, gap, alpha)  # Ignore returned labels, use data['Labels']
-  
-    # # find Rising Star and Evening Star patterns
-    # data = find_RE_star(data, gap, lback)
+    if data is None:
+        return [], [], [], [], data
 
     chart_dir = os.path.join("chartdata", datalabel_)
     os.makedirs(chart_dir, exist_ok=True)
 
     charts, chart_labels, data = generate_chart(data, ticker, predict_days, window_days, datalabel_)
-
-    # charts, chart_labels = [], []  # Separate list for chart labels
-    
-    # # Generate charts and detect patterns
-    # for i in range(len(data) - days - gap):
-    #     lastdayptr = i + days
-    #     chart_data = data.iloc[i:lastdayptr]
-    #     # print(chart_data)
-    #     if len(chart_data) != days:
-    #         print(f"Skipping window {i} due to insufficient or invalid data: {len(chart_data)} chart_data in {days} days")
-    #         continue
-            
-    #     # Detect Rising Star and Evening Star patterns
-    #     rising_star_markers = chart_data['RisingStar']
-    #     evening_star_markers = chart_data['EveningStar']
-        
-    #     # Build additional plots list, only include scatter plots if markers exist
-    #     ap = [
-    #         mpf.make_addplot(chart_data['EMA_5'], color='red', width=1),
-    #         mpf.make_addplot(chart_data['EMA_10'], color='blue', width=1),
-    #         mpf.make_addplot(chart_data['EMA_20'], color='green', width=1),
-    #         mpf.make_addplot(chart_data['EMA_30'], color='yellow', width=1)
-    #     ]
-        
-    #     # Only add scatter plots if there are non-NaN markers
-    #     if rising_star_markers.notna().any():
-    #         # Ensure the series contains only numeric or np.nan values
-    #         rising_star_markers = pd.to_numeric(rising_star_markers, errors='coerce')
-    #         print(f"Adding Rising Star markers for window {i} is ")
-    #         ap.append(mpf.make_addplot(rising_star_markers, type='scatter', marker='^', color='cyan', markersize=100))
-    #     if evening_star_markers.notna().any():
-    #         evening_star_markers = pd.to_numeric(evening_star_markers, errors='coerce')
-    #         print(f"Adding Evening Star markers for window {i} is ")
-    #         ap.append(mpf.make_addplot(evening_star_markers, type='scatter', marker='v', color='magenta', markersize=100))
-
-    #     start_d = chart_data.index[0].strftime('%Y%m%d')
-    #     end_d = chart_data.index[-1].strftime('%Y%m%d')
-    #     chart_path = os.path.join(chart_dir, f"chart_{ticker}_{i}_{start_d}_{end_d}.png")
-    #     try:
-    #         fig, ax = mpf.plot(chart_data, type='candle', addplot=ap, savefig=chart_path, warn_too_much_data=1000, returnfig=True)
-    #         plt.close(fig)  # Close the figure to free memory
-    #         plt.close('all')  # Close all figures to prevent memory accumulation
-    #     except Exception as e:
-    #         print(f"Error generating chart {chart_path}: {e}")
-    #         continue
-        
-    #     # Use pre-computed Label
-    #     label = data.at[data.index[lastdayptr], 'Labels']
-    #     if label is None:
-    #         print(f"Skipping window {i} due to missing label")
-    #         continue
-    #     charts.append(chart_path)
-    #     chart_labels.append(label)  # Append to chart_labels instead of labels
-
-    # print(f"Generated {len(charts)} charts for {ticker}")
-    # if not charts:
-    #     print(f"Error: No valid charts generated for {ticker}. Check data availability or chart generation logic.")
-    #     return [], [], [], [], data
 
     # Split into training and testing sets
     print(f"charts={len(charts)}, chart_labels={len(chart_labels)}")
@@ -587,7 +472,7 @@ def cal_accuracy(ticker, y_test, y_pred_classes, model_name, model_label_):
 
 def prepare_data(ticker, window_days, alpha, predict_days, lookback_, data_label_, start_date, end_date):
     # Generate and split data
-    fulldata_name = os.path.join("data", f"fulldata_{data_label_}.csv")
+    fulldata_name = os.path.join("data", f"full_{data_label_}_{start_date}_{end_date}.csv")
 
     if os.path.exists(fulldata_name):
         print(f"{fulldata_name} already exists, skipping prepare data.")
@@ -598,10 +483,10 @@ def prepare_data(ticker, window_days, alpha, predict_days, lookback_, data_label
 
     if not train_charts or not test_charts or fulldata is None:
         print("No charts generated or invalid data, exiting.")
-        return fulldata
+        return None
         
     # dump the fulldata with all calculated EMAs and labels
-    fulldata.to_csv(os.path.join("data", f"fulldata_{data_label_}.csv"), index=True)
+    fulldata.to_csv(fulldata_name, index=True)
     print(f"Fulldata saved for {ticker} with {len(fulldata)} rows.")
 
     em_y = fulldata['EMStrend'].dropna()
@@ -657,11 +542,12 @@ def model_training(ticker, window_days, alpha, epochs, predict_days, batch_size,
     return result_df_
 
 # Step 8: Main function
-def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_, data_label_):
+def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_, data_label_, start_date, end_date):
 
     result_df = model_training(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_, data_label_, result_file)
 
-    fulldata = pd.read_csv(os.path.join("data", f"fulldata_{data_label_}.csv"))
+    fulldata_name = os.path.join("data", f"full_{data_label_}_{start_date}_{end_date}.csv")
+    fulldata = pd.read_csv(fulldata_name)
 
     trend_mapping = {"UP": 1, "DOWN": 2, "SIDEWAY": 3}
     em_y = fulldata['EMStrend'].dropna().to_list()
@@ -670,7 +556,8 @@ def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df
     lbyy = [trend_mapping[em] for em in lb_y]
 
     try:
-        acc, prec, recall, f1 = cal_accuracy(ticker, lbyy, emyy, '4MAs')
+        m_label = model_label(data_label_, '4MAs', epochs, batch_size)
+        acc, prec, recall, f1 = cal_accuracy(ticker, lbyy, emyy, '4MAs', m_label)
         new_row = [ticker, '4MAs', window_days, alpha, epochs, predict_days, batch_size, lookback_, acc, prec, recall, f1]
         result_df.loc[len(result_df)] = new_row
         result_df.to_csv(result_file, index=False)
@@ -732,8 +619,9 @@ if __name__ == "__main__":
             model_training(TrainLabel, 0, 0, epochs, 0, batch_size, result, 0, TrainLabel, result_file)
         else:
             fulldata = prepare_data(ticker, window_days, alpha, predict_days, star_lookback, data_label, DATA_START_DATE, DATA_END_DATE)
-            result = main(ticker, window_days, alpha, epochs, predict_days, batch_size, result, star_lookback, data_label)
-            print(result)
+            if fulldata is not None and len(fulldata)>0:
+                result = main(ticker, window_days, alpha, epochs, predict_days, batch_size, result, star_lookback, data_label, DATA_START_DATE, DATA_END_DATE)
+                print(result)
     else:
         print("No ticker provided, exiting.")
 
