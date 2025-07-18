@@ -8,6 +8,7 @@ from supabase import create_client
 import os
 import json
 from curl_cffi import requests
+import pandas as pd
 
 load_dotenv()
 
@@ -18,21 +19,16 @@ load_dotenv()
 #
 #supabase = create_client("https://mprqvvcbtqnltjnyznsd.supabase.co", os.environ.get("SUPABASE_KEY"))
 
+df = pd.read_csv('stock_list.csv')
+symbols = df['Symbol'].dropna().unique()
 
 FEEDTYPES = {
     'NASDAQ': 'API'
 }
 FEEDS = {
     'NASDAQ': {
-        'AAPL': 'https://www.nasdaq.com/api/news/topic/articlebysymbol?q=AAPL|STOCKS&offset=0&limit=10&fallback=true',
-        'MSFT': 'https://www.nasdaq.com/api/news/topic/articlebysymbol?q=MSFT|STOCKS&offset=0&limit=10&fallback=true',
-        'GOOGL': 'https://www.nasdaq.com/api/news/topic/articlebysymbol?q=GOOGL|STOCKS&offset=0&limit=10&fallback=true',
-        'AMZN': 'https://www.nasdaq.com/api/news/topic/articlebysymbol?q=AMZN|STOCKS&offset=0&limit=10&fallback=true',
-        'TSLA': 'https://www.nasdaq.com/api/news/topic/articlebysymbol?q=TSLA|STOCKS&offset=0&limit=10&fallback=true'
+        symbol: f"https://www.nasdaq.com/api/news/topic/articlebysymbol?q={symbol}|STOCKS&offset=0&limit=10&fallback=true" for symbol in symbols
     }
-    #'NASDAQ': {
-    #    'TSLA': 'https://www.nasdaq.com/api/news/topic/articlebysymbol?q=TSLA|STOCKS&offset=0&limit=10&fallback=true'
-    #}
 }
 
 def get_message(ticker, text):
