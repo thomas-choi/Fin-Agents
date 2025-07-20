@@ -6,8 +6,10 @@ PYTHON_SCRIPT="$(pwd)/MA4Star_Strategy.py"
 # Path to the CSV file containing tickers
 # TICKERS_CSV="nasdaq100_components.csv"
 # TICKERS_CSV="hsi_components.csv"
-TICKERS_CSV="sp500_components.csv"
-# TICKERS_CSV="us-etf.csv"
+# TICKERS_CSV="sp500_components.csv"
+TICKERS_CSV="us-etf.csv"
+
+echo "Pricessing stock list : $TICKERS_CSV "
 
 # Check if Python is installed
 if ! command -v python3 &> /dev/null

@@ -17,6 +17,8 @@ from datetime import date
 
 result_file = "4MAs_train_result.csv"
 
+IMPORT_BASE = "import"
+
 LABEL_STAR = "EMStrend"
 # LABEL_STAR = "Labels"
 DATA_START_DATE = "2022-01-01"  # Start date for data download
@@ -33,8 +35,14 @@ def data_label(ticker, window_days, alpha, predict_days, star_lookback):
 def model_label(data_label_, model_name_, epochs_, batch_size_):
     return f"{data_label_}_{model_name_}_{epochs_}_{batch_size_}"
 
+def import_base(subfolder_name):
+    if len(IMPORT_BASE)>0:
+        return os.path.join(IMPORT_BASE, subfolder_name)
+    else:
+        return subfolder_name
+                         
 def retreive_model(model_label):
-    model_file = os.path.join("models", f"{model_label}.pkl")
+    model_file = os.path.join(import_base("models"), f"{model_label}.pkl")
     if os.path.exists(model_file):
         with open(model_file, 'rb') as file:
             model = pickle.load(file)
@@ -175,23 +183,28 @@ def combine_data(datalabel_, combinedlabel_):
     combined_filename=f"{combinedlabel_}_metadata.csv"
     print(f"combine_data with datalabel={datalabel_}, combined_filename={combined_filename}")
     column_names = ['chart_path', 'label']
-    test_combined_fd = pd.read_csv(os.path.join("test_metadata", combined_filename), usecols=column_names) if os.path.exists(os.path.join("test_metadata", combined_filename)) else pd.DataFrame(columns=column_names)
-    train_combined_fd = pd.read_csv(os.path.join("train_metadata", combined_filename), usecols=column_names) if os.path.exists(os.path.join("train_metadata", combined_filename)) else pd.DataFrame(columns=column_names)
-    train_fullp = os.path.join("train_metadata", f"{datalabel_}_metadata.csv")
-    test_fullp = os.path.join("test_metadata", f"{datalabel_}_metadata.csv")
+    test_meta = import_base("test_metadata")
+    train_meta = import_base("train_metadata")
+
+    test_meta_path = os.path.join(test_meta, combined_filename)
+    train_meta_path = os.path.join(train_meta, combined_filename)
+    test_combined_fd = pd.read_csv(test_meta_path, usecols=column_names) if os.path.exists(test_meta_path) else pd.DataFrame(columns=column_names)
+    train_combined_fd = pd.read_csv(train_meta_path, usecols=column_names) if os.path.exists(train_meta_path) else pd.DataFrame(columns=column_names)
+    train_fullp = os.path.join(train_meta, f"{datalabel_}_metadata.csv")
+    test_fullp = os.path.join(test_meta, f"{datalabel_}_metadata.csv")
     train_df = pd.read_csv(train_fullp)
     test_df = pd.read_csv(test_fullp)
     test_combined_fd = pd.concat([test_combined_fd, test_df], ignore_index=True)
     train_combined_fd = pd.concat([train_combined_fd, train_df], ignore_index=True) 
-    test_combined_fd.to_csv(os.path.join("test_metadata", combined_filename), index=False)
-    train_combined_fd.to_csv(os.path.join("train_metadata", combined_filename), index=False)
+    test_combined_fd.to_csv(test_meta_path, index=False)
+    train_combined_fd.to_csv(train_meta_path, index=False)
 
 def download_setup_data(ticker, predict_days, window_days, alpha, lback, start_date="", end_date=""):
     print(f"download_setup_data {ticker} with predict_days={predict_days}, window_days={window_days}, alpha={alpha}, lookback={lback}, start_date={start_date}, end_date={end_date}")
 
     # Download data
     try:
-        filename=os.path.join("data", f"{ticker}_{start_date}_{end_date}.csv")
+        filename=os.path.join(import_base("data"), f"{ticker}_{start_date}_{end_date}.csv")
         if os.path.exists(filename):
             print(f"Loading data from {filename}")
             data = pd.read_csv(filename, index_col=0, parse_dates=True)
@@ -253,7 +266,7 @@ def download_setup_data(ticker, predict_days, window_days, alpha, lback, start_d
 
 def generate_chart(data, ticker, predict_days, window_days, datalabel_):
     print(f"generate_chart {ticker} with predict_days={predict_days}, window_days={window_days}, datalabel={datalabel_}")
-    chart_dir = os.path.join("chartsdata", datalabel_)
+    chart_dir = os.path.join(import_base("chartsdata"), datalabel_)
     os.makedirs(chart_dir, exist_ok=True)
     charts, chart_labels = [], []  # Separate list for chart labels
 
@@ -329,7 +342,7 @@ def generate_candlestick_with_emas(ticker, gap, days, alpha, datalabel_, lback, 
     if data is None:
         return [], [], [], [], data
 
-    chart_dir = os.path.join("chartdata", datalabel_)
+    chart_dir = os.path.join(import_base("chartsdata"), datalabel_)
     os.makedirs(chart_dir, exist_ok=True)
 
     charts, chart_labels, data = generate_chart(data, ticker, predict_days, window_days, datalabel_)
@@ -347,11 +360,11 @@ def generate_candlestick_with_emas(ticker, gap, days, alpha, datalabel_, lback, 
     # Save metadata to CSV
     train_df = pd.DataFrame({"chart_path": train_charts, "label": train_labels})
     test_df = pd.DataFrame({"chart_path": test_charts, "label": test_labels})
-    train_fullp = os.path.join("train_metadata", f"{datalabel_}_metadata.csv")
+    train_fullp = os.path.join(import_base("train_metadata"), f"{datalabel_}_metadata.csv")
     print(train_fullp)
     os.makedirs(os.path.dirname(train_fullp), exist_ok=True)
     train_df.to_csv(train_fullp, index=False)
-    test_fullp = os.path.join("test_metadata", f"{datalabel_}_metadata.csv")
+    test_fullp = os.path.join(import_base("test_metadata"), f"{datalabel_}_metadata.csv")
     print(test_fullp)
     os.makedirs(os.path.dirname(test_fullp), exist_ok=True)
     test_df.to_csv(test_fullp, index=False)
@@ -437,7 +450,7 @@ def plot_accuracy(ticker, history, model_name, model_label):
     plt.ylabel('Accuracy')
     plt.legend()
     plt.grid(True)
-    plt.savefig(os.path.join("tperf", f"{model_label}_accuracy_plot.png"))
+    plt.savefig(os.path.join(import_base("tperf"), f"{model_label}_accuracy_plot.png"))
     plt.close()
 
 # Step 6: Evaluate model performance
@@ -466,13 +479,13 @@ def cal_accuracy(ticker, y_test, y_pred_classes, model_name, model_label_):
     plt.title(f"{ticker}_{model_label_} Confusion Matrix")
     plt.xlabel("Predicted")
     plt.ylabel("True")
-    plt.savefig(os.path.join("matrix", f"{ticker}_{model_label_}_confusion_matrix.png"))
+    plt.savefig(os.path.join(import_base("matrix"), f"{ticker}_{model_label_}_confusion_matrix.png"))
     plt.close()
     return accuracy, precision, recall, f1
 
 def prepare_data(ticker, window_days, alpha, predict_days, lookback_, data_label_, start_date, end_date):
     # Generate and split data
-    fulldata_name = os.path.join("data", f"full_{data_label_}_{start_date}_{end_date}.csv")
+    fulldata_name = os.path.join(import_base("data"), f"full_{data_label_}_{start_date}_{end_date}.csv")
 
     if os.path.exists(fulldata_name):
         print(f"{fulldata_name} already exists, skipping prepare data.")
@@ -499,8 +512,8 @@ def prepare_data(ticker, window_days, alpha, predict_days, lookback_, data_label
 def model_training(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df_, lookback_, data_label_, result_file_):
     print(f"model_training({ticker}, {window_days}, {alpha}, {epochs}, {predict_days}, {batch_size}, result_df, {lookback_}, {data_label_}, {result_file_}")
     # Load training and testing data
-    X_train, y_train = load_data(os.path.join("train_metadata", f"{data_label_}_metadata.csv"), limit=5000)
-    X_test, y_test = load_data(os.path.join("test_metadata", f"{data_label_}_metadata.csv"), limit=2000)
+    X_train, y_train = load_data(os.path.join(import_base("train_metadata"), f"{data_label_}_metadata.csv"), limit=5000)
+    X_test, y_test = load_data(os.path.join(import_base("test_metadata"), f"{data_label_}_metadata.csv"), limit=2000)
     print(f"Loaded {len(X_train)} training images and {len(X_test)} testing images for {ticker}.")
     if X_train.size == 0 or X_test.size == 0:
         print("No valid images loaded, exiting.")
@@ -508,13 +521,13 @@ def model_training(ticker, window_days, alpha, epochs, predict_days, batch_size,
 
     # Define models to train
     # models = [build_cnn_model(), build_cnn_lstm_model(data_label_), build_dense_model()]
-    models = [build_cnn_model(),  build_dense_model()]
+    models = [build_cnn_model()]
 
     # Train and evaluate each model
     for model, model_name in models:
         # if model file exist, skip the process
         modellabel = model_label(data_label_, model_name, epochs, batch_size)
-        model_file = os.path.join("models", f"{modellabel}.pkl")
+        model_file = os.path.join(import_base("models"), f"{modellabel}.pkl")
 
         if os.path.exists(model_file):
             print(f"{model_file} already exists, skipping training.")
@@ -546,7 +559,7 @@ def main(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df
 
     result_df = model_training(ticker, window_days, alpha, epochs, predict_days, batch_size, result_df, lookback_, data_label_, result_file)
 
-    fulldata_name = os.path.join("data", f"full_{data_label_}_{start_date}_{end_date}.csv")
+    fulldata_name = os.path.join(import_base("data"), f"full_{data_label_}_{start_date}_{end_date}.csv")
     fulldata = pd.read_csv(fulldata_name)
 
     trend_mapping = {"UP": 1, "DOWN": 2, "SIDEWAY": 3}
