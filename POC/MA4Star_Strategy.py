@@ -205,6 +205,7 @@ def download_setup_data(ticker, predict_days, window_days, alpha, lback, start_d
     # Download data
     try:
         filename=os.path.join(import_base("data"), f"{ticker}_{start_date}_{end_date}.csv")
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
         if os.path.exists(filename):
             print(f"Loading data from {filename}")
             data = pd.read_csv(filename, index_col=0, parse_dates=True)
@@ -450,6 +451,7 @@ def plot_accuracy(ticker, history, model_name, model_label):
     plt.ylabel('Accuracy')
     plt.legend()
     plt.grid(True)
+    os.makedirs(import_base("tperf"), exist_ok=True)
     plt.savefig(os.path.join(import_base("tperf"), f"{model_label}_accuracy_plot.png"))
     plt.close()
 
@@ -479,6 +481,7 @@ def cal_accuracy(ticker, y_test, y_pred_classes, model_name, model_label_):
     plt.title(f"{ticker}_{model_label_} Confusion Matrix")
     plt.xlabel("Predicted")
     plt.ylabel("True")
+    os.makedirs(import_base("matrix"), exist_ok=True)
     plt.savefig(os.path.join(import_base("matrix"), f"{ticker}_{model_label_}_confusion_matrix.png"))
     plt.close()
     return accuracy, precision, recall, f1

@@ -1,5 +1,5 @@
 # Inherit from the specified NVIDIA TensorFlow base image
-FROM nvcr.io/nvidia/tensorflow:24.09-tf2-py3
+FROM nvcr.io/nvidia/tensorflow:24.06-tf2-py3
 
 # Set environment variables for user configuration
 ARG USER_ID=1000
@@ -32,10 +32,15 @@ USER ${USER_NAME}
 # Set the command to run Jupyter Notebook in /workdir, binding to all interfaces
 CMD ["/bin/bash", "-c", "jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --notebook-dir=/workdir"]
 
+# command to build the Docker image
 # docker build --no-cache --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -f my-tf-jupyter -t my-tf-jupyter .
+# 
 # RUN a jupyter notebook
-# docker run --rm -it --ip=192.168.11.102 --network=host --gpus all -v $(pwd):/workdir -p 8888:8888 my-tf-jupyter
-# RUN a bash 
+# docker run --rm -it --ip=0.0.0.0 --network=host --gpus all -v $(pwd):/workdir -p 8888:8888 my-tf-jupyter
+# 
+# RUN a bash in the container
+# docker run --rm -it --gpus all -v $(pwd):/workdir -p 8888:8888 my-tf-jupyter /bin/bash
+
 # docker run --rm -it --gpus all -v $(pwd):/workdir --network=host -p 8888:8888 my-tf-jupyter /bin/bash
 # jupyter lab --ip=192.168.11.102 --network=host --port=8888 --no-browser --notebook-dir=/workdir
 # jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --notebook-dir=/workdir
