@@ -53,7 +53,7 @@ The system is divided into the following key components:
      - Experts predict trend (probabilities), support/resistance (price levels), and volatility (numerical estimate).
      - A gating network assigns weights based on market conditions.
      - Outputs are combined (via rules, weighted score, or meta-model) into a trading signal.
-     - Detailed documentation is available in [Stock Trend doc](docs/Stock_Trend_Ensemble_Documentation.md) and [MoE doc](docs/MoE_Trading_Signal_Architecture.md).
+     - Detailed documentation is available in [Stock Trend doc](docs/Stock_Trend_Ensemble_Documentation.markdown) and [MoE doc](docs/MoE_Trading_Signal_Architecture.markdown).
    - **MoE Diagram**:
      ```mermaid
      graph TD
@@ -181,7 +181,7 @@ graph TD
           print(tf.config.list_physical_devices("GPU"))
           ```
         - Check GPU: `nvidia-smi`.
-     - **Note**: For detailed instructions and troubleshooting, see [GPU-TF container](docs/setup_tensorflow_nvidia_container.md).
+     - **Note**: For detailed instructions and troubleshooting, see [GPU-TF container](docs/setup_tensorflow_nvidia_container.markdown).
 
 4. **Configuration**:
    - Configure MySQL database credentials in `config/mysql.yaml`.
@@ -219,11 +219,11 @@ graph TD
 - **Data Collection**: Deploy and invoke AWS Lambda functions via Serverless to fetch data from Yahoo Finance and Nasdaq.
 - **Data Processing**: Placeholder for future scripts to label and align data for trends, support/resistance, and volatility.
 - **Model Training**: Placeholder for future scripts to train and evaluate models in the NVIDIA TensorFlow container for GPU acceleration.
-- **Ensemble/MoE**: Combine model predictions using ensemble methods or MoE to generate trading signals. See `docs/Stock_Trend_Ensemble_Documentation.md` and `docs/MoE_Trading_Signal_Architecture.md` for details.
+- **Ensemble/MoE**: Combine model predictions using ensemble methods or MoE to generate trading signals. See `docs/Stock_Trend_Ensemble_Documentation.markdown` and `docs/MoE_Trading_Signal_Architecture.markdown` for details.
 - **Prediction**: Placeholder for future deployment scripts to generate stock market analysis, including trading signals.
 
 ## License
 This project is licensed under the MIT License. See `LICENSE` for details.
 
 ## Contact
-For questions or support, contact the project maintainer at <your-email@example.com>.
+For questions or support, contact the project maintainer at <thomas.choi@neuralmatrixllc.com>.
