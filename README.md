@@ -17,7 +17,7 @@ The system is divided into the following key components:
 
 3. **Data Storage**:
    - **MySQL Database**: Stores structured data like financial statistics and historical data.
-   - **MongoDB**: Stores non-structured data such as news articles and financial reports.
+   - **PostgreSQL**: Stores non-structured data such as news articles and financial reports.
    - **AWS S3**: Stores unstructured files like chart images and other documents.
 
 4. **Data Processing**:
@@ -82,7 +82,7 @@ graph TD
     A -->|Deployed via Serverless| A1[Serverless Framework]
     B --> C[Data Storage]
     C -->|Structured Data| C1[MySQL Database]
-    C -->|Non-Structured Data| C2[MongoDB]
+    C -->|Non-Structured Data| C2[PostgreSQL]
     C -->|Unstructured Files| C3[AWS S3]
     C1 --> D[Data Processing: TBD]
     C2 --> D
@@ -97,7 +97,7 @@ graph TD
 
 ### Diagram Explanation
 - **Data Flow**:
-  - AWS Lambda functions, deployed via Serverless, collect data from Yahoo Finance and Nasdaq, storing it in MySQL (structured), MongoDB (non-structured), and AWS S3 (unstructured files).
+  - AWS Lambda functions, deployed via Serverless, collect data from Yahoo Finance and Nasdaq, storing it in MySQL (structured), PostgreSQL (non-structured), and AWS S3 (unstructured files).
   - Processed data, labeled by timeline, is used to train models for trends, support/resistance levels, volatility, and other objectives.
   - Trained models are combined using ensemble methods or MoE to produce trading signals (e.g., buy/sell/hold, position sizing).
   - The production pipeline generates stock market analysis, including trading signals.
@@ -115,21 +115,21 @@ graph TD
      - NVIDIA Container Toolkit for GPU support in Docker.
      - NGC account for pulling NVIDIA TensorFlow container.
      - MySQL for structured data storage.
-     - MongoDB for non-structured data storage.
+     - PostgreSQL for non-structured data storage.
      - AWS S3 bucket for file storage.
      - AWS account with Lambda and Serverless Framework configured.
      - Cloud platform (AWS/GCP) for hosting.
-     - Python environment with libraries for Deep Learning (e.g., TensorFlow, PyTorch) and data processing (e.g., Pandas, NumPy).
+     - Python 3.10 environment with libraries for Deep Learning (e.g., TensorFlow, PyTorch) and data processing (e.g., Pandas, NumPy).
      - Serverless Framework CLI installed (`npm install -g serverless`).
 
 2. **Installation**:
    ```bash
    # Clone the repository
-   git clone <repository-url>
-   cd financial-trend-prediction
+   git clone https://github.com/thomas-choi/Fin-Agents.git
+   cd Fin-Agents
 
    # Set up Python environment
-   python -m venv venv
+   python3.10 -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    pip install -r requirements.txt
 
@@ -185,7 +185,7 @@ graph TD
 
 4. **Configuration**:
    - Configure MySQL database credentials in `config/mysql.yaml`.
-   - Configure MongoDB connection in `config/mongodb.yaml`.
+   - Configure PostgreSQL connection in `config/postgresql.yaml`.
    - Set up AWS S3 access keys in `config/s3.yaml`.
    - Configure AWS credentials for Lambda in `config/aws.yaml`.
    - Define Serverless Framework settings in `serverless.yml` for Lambda functions.

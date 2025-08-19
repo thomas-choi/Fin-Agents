@@ -18,3 +18,6 @@ mplfinance
 scikit-learn
 seaborn
 pytest-shutil
+plotly
+backtesting
+xhtml2pdf
