@@ -1,0 +1,8 @@
+python-dotenv==0.21.1
+SQLAlchemy==1.4.46
+psycopg2-binary==2.9.9
+yfinance
+pandas==1.5.3
+numpy==1.26.4
+curl_cffi==0.10.0
+beautifulsoup4==4.13.3

@@ -1,0 +1,46 @@
+service: DataCollection
+
+# configValidationMode: error
+
+frameworkVersion: '3'
+useDotenv: true
+
+plugins:
+  - serverless-dotenv-plugin
+
+provider:
+  name: aws
+  runtime: python3.10
+  region: us-east-2
+  profile: ServerLessUser
+  timeout: 120     # default is 6 sec
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - 'S3:PutObject'
+            - 'S3:GetObject'
+            - 's3:HeadObject'  # Add this
+            - 'S3:DeleteObject'
+          Resource:
+            - "arn:aws:s3:::workingplace/*"
+            - "arn:aws:s3:::fin-modal-data/*"
+        - Effect: Allow
+          Action: 'S3:ListBucket'
+          Resource:
+            - "arn:aws:s3:::workingplace"
+            - "arn:aws:s3:::fin-modal-data"
+
+functions:
+  nasdaqnewsDB:
+    handler: Nasdaq-news-DB.run
+    events:
+      # Invoke Lambda function every 2nd minute from Mon-Fri
+      # Invoke Lambda function every night
+      - schedule: cron(0 * * * ? *) # every hour  EDT (UTC-4) every day
+  yfnewsDB:
+    handler: yf-news-DB.run
+    events:
+      # Invoke Lambda function every night
+      - schedule: cron(30 * * * ? *) # every :30 on hour EDT (UTC-4) every day
