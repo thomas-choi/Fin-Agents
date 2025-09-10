@@ -88,7 +88,7 @@ def save_s3_json(obj, s3_key):
     logging.info(f"Saved to S3: {s3_key}")
 
 def read_progress(run_date: str) -> dict:
-    progress_path = os.path.join(BASE_DIR, 'PROGRESS', SOURCE, run_date, 'progress.json')
+    progress_path = os.path.join(BASE_DIR, 'DBPROGRESS', SOURCE, run_date, 'progress.json')
     if LOCALRUN:
         if os.path.exists(progress_path):
             try:
@@ -153,7 +153,7 @@ def save_news_items(news_items: list[dict], ticker: str, run_date: str, source: 
     logging.info(f"Saved aggregated news for {ticker} to {out_path}")
 
 def save_progress(run_date: str, last_processed_index: int, total_tickers: int):
-    progress_path = os.path.join(BASE_DIR, 'PROGRESS', SOURCE, run_date, 'progress.json')
+    progress_path = os.path.join(BASE_DIR, 'DBPROGRESS', SOURCE, run_date, 'progress.json')
     progress_data = {
         'last_processed_index': last_processed_index,
         'total_tickers': total_tickers,
