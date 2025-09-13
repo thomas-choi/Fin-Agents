@@ -201,6 +201,7 @@ def fetch_news_for_ticker(ticker: str) -> list[dict]:
         news_list.append({
             #'id': uid,
             'date': dt_str,
+            "source": SOURCE,
             'ticker': ticker,
             'title': item.get('title'),
             'link': link,
