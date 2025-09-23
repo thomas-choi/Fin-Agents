@@ -178,13 +178,19 @@ def parse_dates_from_soup(soup: BeautifulSoup) -> tuple[str | None, str | None]:
             date_pub = m['content'].strip()
     return date_mod, date_pub
 
-def parse_api_feed(response):
+def parse_api_feed(response, source: str, symbol: str):
     result = {
         "channel": {
             "items": []
         }
     }
     result_str = json.dumps(result)
+
+    if response is None or getattr(response, "status_code", 0) != 200:
+        logging.warning(
+            f"Feed HTTP error: source={source} symbol={symbol} status={getattr(response,'status_code',None)} url={getattr(response,'url',None)}"
+        )
+        return SimpleNamespace(channel=SimpleNamespace(items=[]))
 
     if response.content:
         result_ = json.loads(response.content)
@@ -199,13 +205,26 @@ def parse_api_feed(response):
                 "pub_date": {"content":datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")},
             })
         result_str = json.dumps(result)
+    else:
+        logging.warning(
+            f"Empty feed content: source={source} symbol={symbol} url={getattr(response,'url',None)}"
+        )
     return json.loads(result_str, object_hook=lambda d: SimpleNamespace(**d))
 
-def feed_parser(source, feed_url):
+def feed_parser(source, symbol, feed_url):
     parsed_feed = None
     if FEEDTYPES[source] == 'API':
-        response = requests.get(feed_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"}, impersonate="chrome")
-        parsed_feed = parse_api_feed(response)
+        try:
+            response = requests.get(
+                feed_url,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"},
+                impersonate="chrome",
+                timeout=10
+            )
+        except Exception as e:
+            logging.error(f"Feed request failed: source={source} symbol={symbol} url={feed_url} err={e}")
+            return None
+        parsed_feed = parse_api_feed(response, source, symbol)
     return parsed_feed
 
 def get_article_content_and_date(url: str, source: str) -> tuple[str | None, str]:
@@ -219,7 +238,7 @@ def get_article_content_and_date(url: str, source: str) -> tuple[str | None, str
 
     bs = BeautifulSoup(resp.content, "html.parser")
 
-    # 
+    # Extract article content based on source
     content_lines = []
     if source == 'NASDAQ':
         body_content = bs.find('div', class_='body__content')
@@ -253,7 +272,7 @@ def run(event, context):
     #collect all articles from all feeds
     for source, feed_dict in FEEDS.items():
         for symbol, feed_url in feed_dict.items():
-            parsed_feed = feed_parser(source, feed_url)
+            parsed_feed = feed_parser(source, symbol, feed_url)
             if parsed_feed is None:
                 logging.warning(f"Failed to parse feed for {source} {symbol}")
                 continue
@@ -279,11 +298,8 @@ def run(event, context):
                 continue
             visited.append(link)
             article_content, pub_date = get_article_content_and_date(link, article[0])
-            #article_content = get_article_content(link, article[0])
             # Collect the article data
             ticker_symbol = article[2]
-            #pub_date = article[1].pub_date.content
-            #run_date = datetime.strptime(pub_date, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d")
             data = {
                 "date": pub_date,
                 "source": SOURCE,
