@@ -201,6 +201,7 @@ def run(event, context):
             run_date = datetime.strptime(pub_date, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d")
             data = {
                 "date": pub_date,
+                "source": SOURCE,
                 "ticker": ticker,
                 "title": article[1].title.content,
                 "link": link,

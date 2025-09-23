@@ -32,11 +32,12 @@ def save_news_to_postgres(news_items: list[dict], table_name: str):
     engine = get_DBengine()
     df = pd.DataFrame(news_items)
     sql = text(f"""
-        INSERT INTO {table_name} (date, ticker, title, link, content)
-        VALUES (:date, :ticker, :title, :link, :content)
+        INSERT INTO {table_name} (date, source, ticker, title, link, content)
+        VALUES (:date, :source, :ticker, :title, :link, :content)
         ON CONFLICT (ticker, title)
         DO UPDATE SET
             date=EXCLUDED.date,
+            source=EXCLUDED.source,
             link=EXCLUDED.link,
             content=EXCLUDED.content
     """)
@@ -44,6 +45,7 @@ def save_news_to_postgres(news_items: list[dict], table_name: str):
         for _, row in df.iterrows():
             conn.execute(sql, {
                 "date": row.get('date'),
+                "source": row.get('source'), # Added source field
                 "ticker": row.get('ticker'),
                 "title": row.get('title'),
                 "link": row.get('link'),
