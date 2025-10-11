@@ -122,11 +122,16 @@ graph TD
      - Python 3.10 environment with libraries for Deep Learning (e.g., TensorFlow, PyTorch) and data processing (e.g., Pandas, NumPy).
      - Serverless Framework CLI installed (`npm install -g serverless`).
 
-2. **Installation**:
+2. **Python venv Installation**:
    ```bash
    # Clone the repository
    git clone https://github.com/thomas-choi/Fin-Agents.git
    cd Fin-Agents
+
+   # Install system dependencies
+   sudo apt update
+   sudo apt install python3-full
+   sudo apt install libcairo2-dev pkg-config python3-dev
 
    # Set up Python environment
    python3.10 -m venv venv

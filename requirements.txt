@@ -21,3 +21,4 @@ pytest-shutil
 plotly
 backtesting
 xhtml2pdf
+TA-Lib
