@@ -7,11 +7,13 @@ models/
 data/
 chartsdata/
 Data/
+DATA/
 POC/
 .serverless/
 node_modules/
 .vscode/
-
+exports*/
+venv
 
 # C extensions
 *.so

@@ -44,3 +44,9 @@ functions:
     events:
       # Invoke Lambda function every night
       - schedule: cron(30 * * * ? *) # every :30 on hour EDT (UTC-4) every day
+
+  news_R2:
+    handler: news_collector_lambda.lambda_handler
+    events:
+      # Invoke Lambda function every 30 minutes
+      - schedule: cron(15 * * * ? *) # every :30 on hour EDT (UTC-4) every day      

@@ -42,6 +42,6 @@ agent-data.zip:
 	zip -r9 $@ python/
 
 clean:
-	$(RM) -rf ./python config.zip myFinDataFull.zip
+	$(RM) -rf ./python agent-data.zip
 
 .PHONY: all clean
